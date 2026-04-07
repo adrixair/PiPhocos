@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Phocos Sun Icon</title>
+  <desc id="desc">A bright orange sun on a warm off-white background.</desc>
+  <rect width="1024" height="1024" rx="240" fill="#f5f2ec"/>
+  <g stroke="#e77924" stroke-linecap="round" stroke-width="56">
+    <line x1="512" y1="140" x2="512" y2="250"/>
+    <line x1="512" y1="774" x2="512" y2="884"/>
+    <line x1="140" y1="512" x2="250" y2="512"/>
+    <line x1="774" y1="512" x2="884" y2="512"/>
+    <line x1="248.95" y1="248.95" x2="326.73" y2="326.73"/>
+    <line x1="697.27" y1="697.27" x2="775.05" y2="775.05"/>
+    <line x1="248.95" y1="775.05" x2="326.73" y2="697.27"/>
+    <line x1="697.27" y1="326.73" x2="775.05" y2="248.95"/>
+  </g>
+  <circle cx="512" cy="512" r="170" fill="#e77924"/>
+</svg>

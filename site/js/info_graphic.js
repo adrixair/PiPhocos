@@ -1,0 +1,345 @@
+var gInfoGraphicEnabled = false;
+let gInfoGraphicLabelLayoutFrame = null;
+
+const INFO_GRAPHIC_ACTIVE_THRESHOLD_W = 20;
+const INFO_GRAPHIC_PLACEHOLDER = "--";
+const INFO_GRAPHIC_LABEL_LAYOUT = {
+    solar_hub: { anchor: 0.5, offsetX: 0, offsetY: 0 },
+    grid_hub: { anchor: 0.5, offsetX: 0, offsetY: 0 },
+    hub_grid_export: { anchor: 0.5, offsetX: 0, offsetY: 0 },
+    hub_house: { anchor: 0.5, offsetX: 0, offsetY: 0 },
+    hub_battery_charge: { anchor: 0.5, offsetX: 0, offsetY: 0 },
+    battery_hub_discharge: { anchor: 0.5, offsetX: 0, offsetY: 0 },
+};
+
+function getInfoGraphicRoot() {
+    return document.getElementById("dashboard_power_flow");
+}
+
+function hasInfoGraphic() {
+    return getInfoGraphicRoot() != null;
+}
+
+function getMetricValue(payload, key) {
+    const value = payload?.live?.[key]?.value;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+}
+
+function getMetricValueOrNull(payload, key) {
+    const value = payload?.live?.[key]?.value;
+    if (value == null || value === "")
+        return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+}
+
+function getInfoGraphicString(id, fallback) {
+    if (typeof getGenericString === "function")
+        return getGenericString(id);
+    return fallback;
+}
+
+function layoutInfoGraphicLabels() {
+    const root = getInfoGraphicRoot();
+    const svg = root?.querySelector(".power-flow-svg");
+    const viewBox = svg?.viewBox?.baseVal;
+    const svgRect = svg?.getBoundingClientRect();
+
+    gInfoGraphicLabelLayoutFrame = null;
+
+    if (root == null || svg == null || viewBox == null || svgRect == null || svgRect.width <= 0 || svgRect.height <= 0)
+        return;
+
+    const scaleX = svgRect.width / viewBox.width;
+    const scaleY = svgRect.height / viewBox.height;
+
+    Object.entries(INFO_GRAPHIC_LABEL_LAYOUT).forEach(([name, layout]) => {
+        const path = document.getElementById("flow_link_" + name);
+        const label = document.getElementById("flow_label_" + name);
+
+        if (path == null || label == null)
+            return;
+
+        const anchor = Math.max(0, Math.min(1, layout.anchor ?? 0.5));
+        const point = path.getPointAtLength(path.getTotalLength() * anchor);
+        const left = (point.x - viewBox.x) * scaleX + (layout.offsetX ?? 0);
+        const top = (point.y - viewBox.y) * scaleY + (layout.offsetY ?? 0);
+
+        label.style.left = left.toFixed(2) + "px";
+        label.style.top = top.toFixed(2) + "px";
+    });
+}
+
+function queueInfoGraphicLabelLayout() {
+    if (gInfoGraphicLabelLayoutFrame != null)
+        cancelAnimationFrame(gInfoGraphicLabelLayoutFrame);
+
+    gInfoGraphicLabelLayoutFrame = requestAnimationFrame(layoutInfoGraphicLabels);
+}
+
+function formatInfoGraphicPower(value) {
+    if (!Number.isFinite(value))
+        return INFO_GRAPHIC_PLACEHOLDER;
+
+    const absolute = Math.abs(value);
+    if (absolute >= 1000)
+        return numFormat(absolute / 1000, absolute >= 10000 ? 1 : 2) + " kW";
+    return numFormat(absolute, 0) + " W";
+}
+
+function formatInfoGraphicPercent(value) {
+    if (!Number.isFinite(value))
+        return INFO_GRAPHIC_PLACEHOLDER;
+    return numFormat(value, 0) + " %";
+}
+
+function setInfoGraphicEnabled(enabled) {
+    const root = getInfoGraphicRoot();
+    if (root == null)
+        return;
+
+    gInfoGraphicEnabled = enabled === true;
+    root.classList.toggle("is-disabled", !gInfoGraphicEnabled);
+    queueInfoGraphicLabelLayout();
+}
+
+function setInfoGraphicNode(name, value, meta, active) {
+    const node = document.getElementById("flow_node_" + name);
+    const valueElement = document.getElementById("dash_flow_value_" + name);
+    const metaElement = document.getElementById("dash_flow_meta_" + name);
+
+    if (node == null || valueElement == null || metaElement == null)
+        return;
+
+    valueElement.textContent = value;
+    metaElement.textContent = meta;
+    node.classList.toggle("is-active", active);
+}
+
+function setInfoGraphicBatteryLevel(percent) {
+    const batteryNode = document.getElementById("flow_node_battery");
+    if (batteryNode == null)
+        return;
+
+    const numericPercent = Number(percent);
+    if (percent == null || !Number.isFinite(numericPercent)) {
+        batteryNode.style.setProperty("--battery-fill-level", "0");
+        return;
+    }
+
+    const clampedPercent = Math.max(0, Math.min(100, numericPercent));
+    batteryNode.style.setProperty("--battery-fill-level", (clampedPercent / 100).toFixed(3));
+}
+
+function setInfoGraphicLink(name, power, active) {
+    const link = document.getElementById("flow_link_" + name);
+    const label = document.getElementById("flow_label_" + name);
+    if (link == null)
+        return;
+
+    const intensity = Math.min(1, Math.max(0.35, Math.abs(power) / 2600));
+    const shouldShow = gInfoGraphicEnabled && active;
+
+    link.classList.toggle("is-active", shouldShow);
+    link.style.opacity = shouldShow ? intensity.toFixed(2) : "0";
+    link.style.strokeWidth = shouldShow ? (4.8 + intensity * 2.2).toFixed(2) : "6";
+
+    if (label != null) {
+        label.textContent = shouldShow ? formatInfoGraphicPower(power) : "";
+        label.classList.toggle("is-active", shouldShow);
+    }
+}
+
+function resetInfoGraphic() {
+    const root = getInfoGraphicRoot();
+    if (root == null)
+        return;
+
+    root.classList.remove("is-stale");
+
+    setInfoGraphicNode("solar", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
+    setInfoGraphicNode("grid", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
+    setInfoGraphicNode("hub", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
+    setInfoGraphicNode("home", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
+    setInfoGraphicNode("battery", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
+    setInfoGraphicBatteryLevel(null);
+
+    setInfoGraphicLink("solar_hub", 0, false);
+    setInfoGraphicLink("grid_hub", 0, false);
+    setInfoGraphicLink("hub_grid_export", 0, false);
+    setInfoGraphicLink("hub_house", 0, false);
+    setInfoGraphicLink("hub_battery_charge", 0, false);
+    setInfoGraphicLink("battery_hub_discharge", 0, false);
+    queueInfoGraphicLabelLayout();
+}
+
+function localizeOperationMode(value) {
+    if (value == null || value === "")
+        return INFO_GRAPHIC_PLACEHOLDER;
+    if (typeof localizeDashboardValue === "function")
+        return String(localizeDashboardValue("metric_operation_mode", value));
+    return String(value);
+}
+
+function renderInfoGraphicFromOverview(payload) {
+    const root = getInfoGraphicRoot();
+    if (root == null)
+        return;
+
+    const solarPower = Math.max(0, getMetricValue(payload, "pv_power_w"));
+    const housePower = Math.max(0, getMetricValue(payload, "ac_output_active_power_w"));
+    const batteryChargePower = Math.max(0, getMetricValue(payload, "battery_charge_power_w"));
+    const batteryDischargePower = Math.max(0, getMetricValue(payload, "battery_discharge_power_w"));
+    const batterySoc = getMetricValueOrNull(payload, "battery_state_of_charge_percent");
+
+    const gridToHousePower = Math.max(0, getMetricValue(payload, "grid_to_house_power_w"));
+    const gridToBatteryPower = Math.max(0, getMetricValue(payload, "grid_to_battery_power_w"));
+    const gridImportPower = gridToHousePower + gridToBatteryPower;
+    const gridExportPower = Math.max(0, getMetricValue(payload, "solar_feed_to_grid_power_w"));
+
+    const batteryToHousePower = Math.max(
+        batteryDischargePower,
+        Math.max(0, getMetricValue(payload, "battery_to_house_power_w"))
+    );
+    const batteryChargeFlow = Math.max(
+        batteryChargePower,
+        Math.max(0, getMetricValue(payload, "solar_to_battery_power_w")) + gridToBatteryPower
+    );
+
+    const solarActive = solarPower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W;
+    const gridImportActive = gridImportPower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W;
+    const gridExportActive = gridExportPower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W;
+    const homeActive = housePower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W;
+    const batteryChargeActive = batteryChargeFlow > INFO_GRAPHIC_ACTIVE_THRESHOLD_W;
+    const batteryDischargeActive = batteryToHousePower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W;
+
+    let gridMeta = getInfoGraphicString("flow_state_idle", "Standby");
+    let gridValue = INFO_GRAPHIC_PLACEHOLDER;
+    let gridActive = false;
+
+    if (gridExportActive) {
+        gridMeta = getInfoGraphicString("flow_state_export", "Exporting");
+        gridValue = formatInfoGraphicPower(gridExportPower);
+        gridActive = true;
+    }
+    else if (gridImportActive) {
+        gridMeta = getInfoGraphicString("flow_state_import", "Importing");
+        gridValue = formatInfoGraphicPower(gridImportPower);
+        gridActive = true;
+    }
+    else if (payload?.health?.ac_input_available === true) {
+        gridMeta = getInfoGraphicString("flow_state_available", "Available");
+        gridValue = "0 W";
+        gridActive = true;
+    }
+
+    let batteryValue = INFO_GRAPHIC_PLACEHOLDER;
+    let batteryMeta = getInfoGraphicString("flow_state_idle", "Standby");
+    let batteryActive = false;
+
+    if (batteryChargePower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W) {
+        batteryValue = formatInfoGraphicPower(batteryChargePower);
+        batteryMeta = getInfoGraphicString("flow_state_charging", "Charging");
+        batteryActive = true;
+    }
+    else if (batteryDischargePower > INFO_GRAPHIC_ACTIVE_THRESHOLD_W) {
+        batteryValue = formatInfoGraphicPower(batteryDischargePower);
+        batteryMeta = getInfoGraphicString("flow_state_discharging", "Discharging");
+        batteryActive = true;
+    }
+    else if (batterySoc != null) {
+        batteryValue = formatInfoGraphicPercent(batterySoc);
+        batteryMeta = getInfoGraphicString("flow_state_idle", "Standby");
+        batteryActive = batterySoc > 0;
+    }
+
+    if (batterySoc != null && batteryMeta !== getInfoGraphicString("flow_state_idle", "Standby"))
+        batteryMeta += " | " + formatInfoGraphicPercent(batterySoc);
+
+    root.classList.toggle("is-stale", payload?.current_data_stale === true);
+
+    setInfoGraphicNode(
+        "solar",
+        solarActive ? formatInfoGraphicPower(solarPower) : "0 W",
+        solarActive
+            ? getInfoGraphicString("flow_state_solar_active", "Solar active")
+            : getInfoGraphicString("flow_state_idle", "Standby"),
+        solarActive
+    );
+    setInfoGraphicNode("grid", gridValue, gridMeta, gridActive);
+    setInfoGraphicNode(
+        "hub",
+        localizeOperationMode(payload?.device?.operation_mode),
+        payload?.current_data_stale === true
+            ? getInfoGraphicString("flow_state_delayed", "Delayed")
+            : getInfoGraphicString("flow_state_live", "Live"),
+        true
+    );
+    setInfoGraphicNode(
+        "home",
+        homeActive ? formatInfoGraphicPower(housePower) : "0 W",
+        homeActive
+            ? getInfoGraphicString("flow_state_home_active", "Live load")
+            : getInfoGraphicString("flow_state_idle", "Standby"),
+        homeActive
+    );
+    setInfoGraphicNode("battery", batteryValue, batteryMeta, batteryActive);
+    setInfoGraphicBatteryLevel(batterySoc);
+
+    setInfoGraphicLink("solar_hub", solarPower, solarActive);
+    setInfoGraphicLink("grid_hub", gridImportPower, gridImportActive);
+    setInfoGraphicLink("hub_grid_export", gridExportPower, gridExportActive);
+    setInfoGraphicLink("hub_house", housePower, homeActive);
+    setInfoGraphicLink("hub_battery_charge", batteryChargeFlow, batteryChargeActive);
+    setInfoGraphicLink("battery_hub_discharge", batteryToHousePower, batteryDischargeActive);
+}
+
+function updateInfoGraphic(payload, gridConsumptionW, fedInW, pvConsumptionW = null) {
+    if (!hasInfoGraphic())
+        return;
+
+    if (payload != null && typeof payload === "object" && !Array.isArray(payload)) {
+        if (payload["state"] === "ok")
+            renderInfoGraphicFromOverview(payload);
+        else
+            resetInfoGraphic();
+        return;
+    }
+
+    const generatedW = Number(payload);
+    const gridW = Number(gridConsumptionW);
+    const exportW = Number(fedInW);
+    const pvToHomeW = pvConsumptionW == null ? generatedW - exportW : Number(pvConsumptionW);
+
+    if (!Number.isFinite(generatedW) || !Number.isFinite(gridW) || !Number.isFinite(exportW)) {
+        resetInfoGraphic();
+        return;
+    }
+
+    renderInfoGraphicFromOverview({
+        state: "ok",
+        current_data_stale: false,
+        device: {
+            operation_mode: null,
+        },
+        health: {
+            ac_input_available: gridW > INFO_GRAPHIC_ACTIVE_THRESHOLD_W,
+        },
+        live: {
+            pv_power_w: { value: generatedW },
+            ac_output_active_power_w: { value: Math.max(0, pvToHomeW) + Math.max(0, gridW) },
+            battery_charge_power_w: { value: 0 },
+            battery_discharge_power_w: { value: 0 },
+            battery_state_of_charge_percent: { value: null },
+            grid_to_house_power_w: { value: Math.max(0, gridW) },
+            grid_to_battery_power_w: { value: 0 },
+            solar_feed_to_grid_power_w: { value: Math.max(0, exportW) },
+            battery_to_house_power_w: { value: 0 },
+            solar_to_battery_power_w: { value: 0 },
+        },
+    });
+}
+
+window.addEventListener("resize", queueInfoGraphicLabelLayout);
+window.addEventListener("DOMContentLoaded", queueInfoGraphicLabelLayout);

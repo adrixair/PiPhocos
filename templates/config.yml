@@ -1,0 +1,52 @@
+## User Settings
+
+# Logging configuration: normal or verbose.
+logging: normal
+
+# Sets the local time zone.
+time_zone: "Europe/Paris"
+
+# Device configuration
+device:
+  type: Phocos
+  start_date: 2024-01-01
+
+# Phocos Any-Grid / PI30 / QPGS over USB-RS232
+phocos:
+  # Replace with the serial adapter exposed on your host.
+  serial_port: /dev/ttyUSB0
+  unit: 0
+  timeout_s: 2.0
+  enable_pi30_probe: true
+  verbose_protocol_logging: false
+
+# Electricity prices. Used to calculate earnings in the UI.
+prices:
+  price_per_grid_kwh: 0.325
+  revenue_per_fed_in_kwh: 0.085
+
+# Tempo EDF API configuration for live grid pricing.
+tempo:
+  enabled: true
+  api_base_url: https://www.api-couleur-tempo.fr/api
+  timeout_s: 3.0
+  cache_ttl_s: 3600
+
+# Instance name shown in the dashboard.
+instance:
+  name: "PiPhocos"
+  
+## Internal Settings. Do not modify!
+
+# Web server configuration. Do not modify!
+server:
+  ip: 0.0.0.0
+  port: 5000
+  public_host: localhost
+  public_url: http://localhost:5000
+
+# Data grabber configuration. Do not modify!
+grabber:
+  interval_s: 2
+  max_gap_for_cumulative_s: 180
+  stale_after_s: 11

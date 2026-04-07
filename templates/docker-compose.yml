@@ -1,0 +1,11 @@
+services:
+  piphocos:
+    container_name: piphocos
+    image: piphocos:latest
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/data
+    devices:
+      - ${PIPHOCOS_SERIAL_PORT:-/dev/ttyUSB0}:${PIPHOCOS_SERIAL_PORT:-/dev/ttyUSB0}

@@ -1,0 +1,10 @@
+.git
+.venv
+__pycache__
+*.pyc
+data
+local_testing
+doc/screenshot.png
+piphocos-latest.tar.gz
+site/mock/ui-snapshot.json
+site/mock/ui-snapshot.csv

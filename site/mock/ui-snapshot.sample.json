@@ -1,0 +1,454 @@
+{
+  "meta": {
+    "label": "Fictional demo snapshot",
+    "captured_at": "2026-01-15T12:00:00+00:00"
+  },
+  "name": "PiPhocos Demo",
+  "apiOverview": {
+    "state": "ok",
+    "recorded_at": "2026-01-15T12:00:00+00:00",
+    "current_data_stale": false,
+    "today_data_complete": true,
+    "pricing": {
+      "source": "tempo",
+      "tempo_available": true,
+      "tariff_label": "Tempo Blue",
+      "color_label": "blue",
+      "tomorrow_color_label": "blue",
+      "grid_price_eur_per_kwh": 0.21,
+      "feed_in_revenue_eur_per_kwh": 0.08,
+      "display": "Blue today"
+    },
+    "device": {
+      "serial_number": "REDACTED",
+      "protocol_id": "PI30",
+      "operation_mode": "Battery",
+      "ac_output_mode": "Single output",
+      "output_source_priority": "Solar / Battery / Grid",
+      "battery_charger_source_priority": "Solar first",
+      "other_units_connected": "0",
+      "fault": "None"
+    },
+    "health": {
+      "mppt_active": true,
+      "solar_charging_on": true,
+      "ac_charging_on": false,
+      "ac_input_available": true,
+      "ac_output_on": true,
+      "active_warning_bits": []
+    },
+    "live": {
+      "ac_input_voltage_v": {
+        "value": 231.4,
+        "unit": "V",
+        "semantics": "exact"
+      },
+      "ac_input_frequency_hz": {
+        "value": 49.98,
+        "unit": "Hz",
+        "semantics": "exact"
+      },
+      "ac_output_voltage_v": {
+        "value": 230.7,
+        "unit": "V",
+        "semantics": "exact"
+      },
+      "ac_output_frequency_hz": {
+        "value": 50.01,
+        "unit": "Hz",
+        "semantics": "exact"
+      },
+      "ac_output_active_power_w": {
+        "value": 1860,
+        "unit": "W",
+        "semantics": "exact"
+      },
+      "ac_output_apparent_power_va": {
+        "value": 2020,
+        "unit": "VA",
+        "semantics": "exact"
+      },
+      "ac_output_load_percent": {
+        "value": 37,
+        "unit": "%",
+        "semantics": "exact"
+      },
+      "battery_state_of_charge_percent": {
+        "value": 68,
+        "unit": "%",
+        "semantics": "exact"
+      },
+      "battery_state": "Charging",
+      "battery_voltage_v": {
+        "value": 51.6,
+        "unit": "V",
+        "semantics": "exact"
+      },
+      "battery_voltage_from_scc_v": {
+        "value": 54.1,
+        "unit": "V",
+        "semantics": "exact"
+      },
+      "battery_charge_current_a": {
+        "value": 18.4,
+        "unit": "A",
+        "semantics": "exact"
+      },
+      "battery_discharge_current_a": {
+        "value": 0.0,
+        "unit": "A",
+        "semantics": "exact"
+      },
+      "total_charging_current_a": {
+        "value": 18.4,
+        "unit": "A",
+        "semantics": "exact"
+      },
+      "pv_input_voltage_v": {
+        "value": 142.8,
+        "unit": "V",
+        "semantics": "exact"
+      },
+      "pv_input_current_a": {
+        "value": 13.1,
+        "unit": "A",
+        "semantics": "exact"
+      },
+      "pv_power_w": {
+        "value": 2215,
+        "unit": "W",
+        "semantics": "exact"
+      },
+      "pv_charging_power_w": {
+        "value": 954,
+        "unit": "W",
+        "semantics": "exact"
+      },
+      "bus_voltage_v": {
+        "value": 385.0,
+        "unit": "V",
+        "semantics": "exact"
+      },
+      "inverter_temperature_c": {
+        "value": 33.7,
+        "unit": "C",
+        "semantics": "exact"
+      }
+    }
+  },
+  "dates": {
+    "state": "ok",
+    "year_min": 2024,
+    "year_max": 2026
+  },
+  "realTime": {
+    "24": [
+      [24, "02:00", 0.0, 1.24, 0.0],
+      [23, "01:00", 0.0, 1.24, 0.0],
+      [22, "00:00", 0.277, 1.08, 0.0],
+      [21, "23:00", 0.696, 1.42, 0.0],
+      [20, "22:00", 1.103, 1.24, 0.173],
+      [19, "21:00", 1.483, 1.08, 0.673],
+      [18, "20:00", 1.818, 1.24, 0.888],
+      [17, "19:00", 2.098, 1.24, 1.168],
+      [16, "18:00", 2.31, 1.08, 1.5],
+      [15, "17:00", 2.445, 1.24, 1.515],
+      [14, "16:00", 2.499, 1.24, 1.569],
+      [13, "15:00", 2.469, 1.08, 1.659],
+      [12, "14:00", 2.357, 1.24, 1.427],
+      [11, "13:00", 2.167, 1.42, 1.102],
+      [10, "12:00", 1.906, 1.08, 1.096],
+      [9, "11:00", 1.586, 1.24, 0.656],
+      [8, "10:00", 1.218, 1.24, 0.288],
+      [7, "09:00", 0.817, 1.08, 0.007],
+      [6, "08:00", 0.4, 1.42, 0.0],
+      [5, "07:00", 0.0, 1.24, 0.0],
+      [4, "06:00", 0.0, 1.08, 0.0],
+      [3, "05:00", 0.0, 1.24, 0.0],
+      [2, "04:00", 0.0, 1.24, 0.0],
+      [1, "03:00", 0.0, 1.08, 0.0]
+    ]
+  },
+  "historical": {
+    "days": {
+      "2026-01-15": {
+        "state": "ok",
+        "produced_kwh": 18.4,
+        "consumed_total_kwh": 14.9,
+        "consumed_from_pv_kwh": 9.8,
+        "consumed_from_battery_kwh": 2.6,
+        "consumed_from_grid_kwh": 2.5,
+        "consumed_from_pv_percent": 65.8,
+        "consumed_from_battery_percent": 17.4,
+        "consumed_from_grid_percent": 16.8,
+        "usage_fed_in_kwh": 5.2,
+        "usage_self_consumed_kwh": 9.8,
+        "usage_fed_in_percent": 28.3,
+        "usage_self_consumed_percent": 53.3,
+        "produced_to_house_kwh": 9.8,
+        "produced_to_battery_kwh": 3.4,
+        "usage_to_house_percent": 53.3,
+        "usage_to_battery_percent": 18.4,
+        "battery_charge_kwh": 3.9,
+        "battery_discharge_kwh": 2.6,
+        "locally_supplied_kwh": 12.4,
+        "earned_feedin": 0.42,
+        "earned_savings": 1.27,
+        "earned_total": 1.69,
+        "autarky": 83.2,
+        "high_res": "[[\"03:00\", 0.0, 0.8, 0.0], [\"05:00\", 0.0, 1.12, 0.0], [\"07:00\", 0.6, 0.8, 0.04], [\"09:00\", 1.847, 1.12, 1.063], [\"11:00\", 2.788, 0.8, 2.228], [\"13:00\", 3.193, 1.12, 2.409], [\"15:00\", 2.964, 0.8, 2.404], [\"17:00\", 2.156, 1.12, 1.372], [\"19:00\", 0.967, 0.8, 0.407], [\"21:00\", 0.0, 1.12, 0.0], [\"23:00\", 0.0, 0.8, 0.0], [\"01:00\", 0.0, 1.12, 0.0]]",
+        "current_grid_price_eur_per_kwh": 0.21,
+        "pricing_source": "tempo",
+        "tempo_available": true,
+        "tempo_tariff_label": "Tempo Blue",
+        "tempo_color": "blue",
+        "consumption_breakdown_is_estimated": false,
+        "consumption_breakdown_note": ""
+      }
+    },
+    "months": {
+      "2026-01": {
+        "state": "ok",
+        "produced_kwh": 221.8,
+        "consumed_total_kwh": 176.4,
+        "consumed_from_pv_kwh": 109.2,
+        "consumed_from_battery_kwh": 28.6,
+        "consumed_from_grid_kwh": 38.6,
+        "consumed_from_pv_percent": 61.9,
+        "consumed_from_battery_percent": 16.2,
+        "consumed_from_grid_percent": 21.9,
+        "usage_fed_in_kwh": 72.4,
+        "usage_self_consumed_kwh": 109.2,
+        "usage_fed_in_percent": 32.6,
+        "usage_self_consumed_percent": 49.2,
+        "produced_to_house_kwh": 109.2,
+        "produced_to_battery_kwh": 40.2,
+        "usage_to_house_percent": 49.2,
+        "usage_to_battery_percent": 18.1,
+        "battery_charge_kwh": 46.1,
+        "battery_discharge_kwh": 28.6,
+        "locally_supplied_kwh": 137.8,
+        "earned_feedin": 5.79,
+        "earned_savings": 14.19,
+        "earned_total": 19.98,
+        "autarky": 78.1,
+        "high_res": "",
+        "current_grid_price_eur_per_kwh": 0.21,
+        "pricing_source": "tempo",
+        "tempo_available": true,
+        "tempo_tariff_label": "Tempo Blue",
+        "tempo_color": "blue",
+        "consumption_breakdown_is_estimated": false,
+        "consumption_breakdown_note": ""
+      }
+    },
+    "years": {
+      "2026": {
+        "state": "ok",
+        "produced_kwh": 842.7,
+        "consumed_total_kwh": 671.3,
+        "consumed_from_pv_kwh": 398.2,
+        "consumed_from_battery_kwh": 96.4,
+        "consumed_from_grid_kwh": 176.7,
+        "consumed_from_pv_percent": 59.3,
+        "consumed_from_battery_percent": 14.4,
+        "consumed_from_grid_percent": 26.3,
+        "usage_fed_in_kwh": 257.1,
+        "usage_self_consumed_kwh": 398.2,
+        "usage_fed_in_percent": 30.5,
+        "usage_self_consumed_percent": 47.3,
+        "produced_to_house_kwh": 398.2,
+        "produced_to_battery_kwh": 148.1,
+        "usage_to_house_percent": 47.3,
+        "usage_to_battery_percent": 17.6,
+        "battery_charge_kwh": 163.2,
+        "battery_discharge_kwh": 96.4,
+        "locally_supplied_kwh": 494.6,
+        "earned_feedin": 20.57,
+        "earned_savings": 51.77,
+        "earned_total": 72.34,
+        "autarky": 73.7,
+        "high_res": "",
+        "current_grid_price_eur_per_kwh": 0.21,
+        "pricing_source": "tempo",
+        "tempo_available": true,
+        "tempo_tariff_label": "Tempo Blue",
+        "tempo_color": "blue",
+        "consumption_breakdown_is_estimated": false,
+        "consumption_breakdown_note": ""
+      }
+    },
+    "all_time": {
+      "all_time": {
+        "state": "ok",
+        "produced_kwh": 3421.5,
+        "consumed_total_kwh": 2890.7,
+        "consumed_from_pv_kwh": 1718.2,
+        "consumed_from_battery_kwh": 402.9,
+        "consumed_from_grid_kwh": 769.6,
+        "consumed_from_pv_percent": 59.4,
+        "consumed_from_battery_percent": 13.9,
+        "consumed_from_grid_percent": 26.6,
+        "usage_fed_in_kwh": 1032.1,
+        "usage_self_consumed_kwh": 1718.2,
+        "usage_fed_in_percent": 30.2,
+        "usage_self_consumed_percent": 50.2,
+        "produced_to_house_kwh": 1718.2,
+        "produced_to_battery_kwh": 611.2,
+        "usage_to_house_percent": 50.2,
+        "usage_to_battery_percent": 17.9,
+        "battery_charge_kwh": 684.1,
+        "battery_discharge_kwh": 402.9,
+        "locally_supplied_kwh": 2121.1,
+        "earned_feedin": 82.57,
+        "earned_savings": 223.37,
+        "earned_total": 305.94,
+        "autarky": 73.4,
+        "high_res": "",
+        "current_grid_price_eur_per_kwh": 0.21,
+        "pricing_source": "tempo",
+        "tempo_available": true,
+        "tempo_tariff_label": "Tempo Blue",
+        "tempo_color": "blue",
+        "consumption_breakdown_is_estimated": false,
+        "consumption_breakdown_note": ""
+      }
+    }
+  },
+  "historyDetails": {
+    "days_in_month": {
+      "2026-01": [
+        {
+          "date": "2026-01-12",
+          "produced_self": 8.1,
+          "produced_to_house": 6.4,
+          "produced_to_battery": 1.7,
+          "produced_feed_in": 3.2,
+          "consumed_from_pv": 6.4,
+          "consumed_from_battery": 1.9,
+          "consumed_from_grid": 2.3
+        },
+        {
+          "date": "2026-01-13",
+          "produced_self": 8.7,
+          "produced_to_house": 6.9,
+          "produced_to_battery": 1.8,
+          "produced_feed_in": 3.4,
+          "consumed_from_pv": 6.9,
+          "consumed_from_battery": 2.0,
+          "consumed_from_grid": 2.1
+        },
+        {
+          "date": "2026-01-14",
+          "produced_self": 9.4,
+          "produced_to_house": 7.3,
+          "produced_to_battery": 2.1,
+          "produced_feed_in": 4.0,
+          "consumed_from_pv": 7.3,
+          "consumed_from_battery": 2.3,
+          "consumed_from_grid": 2.4
+        },
+        {
+          "date": "2026-01-15",
+          "produced_self": 13.2,
+          "produced_to_house": 9.8,
+          "produced_to_battery": 3.4,
+          "produced_feed_in": 5.2,
+          "consumed_from_pv": 9.8,
+          "consumed_from_battery": 2.6,
+          "consumed_from_grid": 2.5
+        }
+      ]
+    },
+    "months_in_year": {
+      "2026": [
+        {
+          "date": "2026-01",
+          "produced_self": 86.5,
+          "produced_to_house": 70.4,
+          "produced_to_battery": 16.1,
+          "produced_feed_in": 28.3,
+          "consumed_from_pv": 70.4,
+          "consumed_from_battery": 18.2,
+          "consumed_from_grid": 39.6
+        },
+        {
+          "date": "2026-02",
+          "produced_self": 102.2,
+          "produced_to_house": 80.8,
+          "produced_to_battery": 21.4,
+          "produced_feed_in": 34.7,
+          "consumed_from_pv": 80.8,
+          "consumed_from_battery": 19.3,
+          "consumed_from_grid": 36.4
+        },
+        {
+          "date": "2026-03",
+          "produced_self": 128.8,
+          "produced_to_house": 99.3,
+          "produced_to_battery": 29.5,
+          "produced_feed_in": 51.5,
+          "consumed_from_pv": 99.3,
+          "consumed_from_battery": 27.6,
+          "consumed_from_grid": 41.1
+        },
+        {
+          "date": "2026-04",
+          "produced_self": 149.4,
+          "produced_to_house": 109.2,
+          "produced_to_battery": 40.2,
+          "produced_feed_in": 72.4,
+          "consumed_from_pv": 109.2,
+          "consumed_from_battery": 28.6,
+          "consumed_from_grid": 38.6
+        }
+      ]
+    },
+    "years_in_all_time": [
+      {
+        "date": "2024",
+        "produced_self": 522.1,
+        "produced_to_house": 418.4,
+        "produced_to_battery": 103.7,
+        "produced_feed_in": 281.2,
+        "consumed_from_pv": 418.4,
+        "consumed_from_battery": 96.6,
+        "consumed_from_grid": 211.4
+      },
+      {
+        "date": "2025",
+        "produced_self": 1140.8,
+        "produced_to_house": 901.6,
+        "produced_to_battery": 239.2,
+        "produced_feed_in": 493.8,
+        "consumed_from_pv": 901.6,
+        "consumed_from_battery": 209.9,
+        "consumed_from_grid": 381.5
+      },
+      {
+        "date": "2026",
+        "produced_self": 546.3,
+        "produced_to_house": 398.2,
+        "produced_to_battery": 148.1,
+        "produced_feed_in": 257.1,
+        "consumed_from_pv": 398.2,
+        "consumed_from_battery": 96.4,
+        "consumed_from_grid": 176.7
+      }
+    ]
+  },
+  "statistics": {
+    "state": "ok",
+    "start_of_operation": "2024-06-01",
+    "days_of_operation": 673,
+    "average_daily_production_kwh": 5.08,
+    "best_day_date": "2025-07-18",
+    "best_day_production_kwh": 28.4,
+    "best_month_date": "2025-07",
+    "best_month_production_kwh": 511.2,
+    "best_year_date": "2025",
+    "best_year_production_kwh": 1894.3,
+    "highest_production_w": 4870,
+    "highest_production_date": "2025-07-18T13:42:00+02:00"
+  }
+}

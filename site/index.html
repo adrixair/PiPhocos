@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <meta name="theme-color" content="#f5f2ec" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PiPhocos" />
+    <title>PiPhocos</title>
+    <link rel="icon" href="favicon.ico?build=20260405c" sizes="any" />
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/app-icon-192.png?build=20260405c" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?build=20260405c" />
+    <link rel="manifest" href="manifest.webmanifest?build=20260405c" />
+    <link href="css/styles.css?build=20260404b" rel="stylesheet" />
+    <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
+    <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
+    <link href="css/custom.css?build=20260407a" rel="stylesheet" />
+</head>
+
+<body class="sb-nav-fixed app-shell">
+    <nav class="sb-topnav navbar navbar-expand app-topbar">
+        <button class="app-icon-button order-0 me-2" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+        <a class="navbar-brand app-brand" href="javascript:showViewDashboard();">
+            <img class="app-brand-logo" src="assets/phocos-logo.png?build=20260404c" alt="PiPhocos" />
+            <span class="visually-hidden" id="instance-name">PiPhocos</span>
+        </a>
+        <div class="app-topbar-actions ms-auto">
+            <div class="dropdown">
+                <button class="app-control-button dropdown-toggle" id="navbar_dropdown_language" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    Language
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end app-dropdown" aria-labelledby="navbar_dropdown_language">
+                    <li><a class="dropdown-item" id="navbar_dropdown_language_en" href="javascript:switchLanguageToEnglish();"
+                            aria-current="false">English</a></li>
+                    <li><a class="dropdown-item" id="navbar_dropdown_language_fr" href="javascript:switchLanguageToFrench();"
+                            aria-current="false">Français</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark app-sidebar" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav app-nav">
+                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_overview">Overview</div>
+                        <a class="nav-link app-nav-link" data-nav-target="dashboard"
+                            href="javascript:showViewDashboard();collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-grip"></i></div>
+                            <div id="sidebar_dashboard">Dashboard</div>
+                        </a>
+                        <a class="nav-link app-nav-link" data-nav-target="statistics"
+                            href="javascript:showViewStatistics();collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-chart-simple"></i></div>
+                            <div id="sidebar_statistics">Statistics</div>
+                        </a>
+                        <a class="nav-link app-nav-link" data-nav-target="today"
+                            href="javascript:showViewHistory(histories.TODAY);collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-star"></i></div>
+                            <div id="sidebar_today">Today</div>
+                        </a>
+
+                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_history">History</div>
+                        <a class="nav-link app-nav-link" data-nav-target="day"
+                            href="javascript:showViewHistory(histories.DAY);collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-day"></i></div>
+                            <div id="sidebar_by_day">By Day</div>
+                        </a>
+                        <a class="nav-link app-nav-link" data-nav-target="month"
+                            href="javascript:showViewHistory(histories.MONTH);collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-days"></i></div>
+                            <div id="sidebar_by_month">By Month</div>
+                        </a>
+                        <a class="nav-link app-nav-link" data-nav-target="year"
+                            href="javascript:showViewHistory(histories.YEAR);collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-week"></i></div>
+                            <div id="sidebar_by_year">By Year</div>
+                        </a>
+                        <a class="nav-link app-nav-link" data-nav-target="all"
+                            href="javascript:showViewHistory(histories.ALL);collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-calendar"></i></div>
+                            <div id="sidebar_all_time">All Time</div>
+                        </a>
+
+                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_misc">Misc</div>
+                        <a class="nav-link app-nav-link" data-nav-target="csv"
+                            href="javascript:showViewCsv();collapseSidebar();">
+                            <div class="sb-nav-link-icon"><i class="fas fa-file-csv"></i></div>
+                            <div id="sidebar_csv">CSV Download</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="app-sidebar-footer">
+                    <div class="app-sidebar-status-stack">
+                        <div class="app-telemetry-status" id="sidebar_live_telemetry" aria-live="polite">Live telemetry</div>
+                        <div class="app-sidebar-detail" id="telemetry_detail" aria-live="polite">...</div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <div id="layoutSidenav_content">
+            <main class="app-main">
+                <div class="container-fluid px-4 app-view" id="view_dashboard">
+                    <div class="app-view-head">
+                        <div>
+                            <h1 class="app-view-title" id="headline_dashboard">Dashboard</h1>
+                            <p class="app-view-subtitle">
+                                <span id="dashboard_subtitle">Last updated:</span>
+                                <span id="dashboard_subtitle_time">...</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <section class="app-panel power-flow-panel">
+                        <div class="app-panel-head">
+                            <span class="app-panel-title" id="dash_card_live_flow">Live flow</span>
+                        </div>
+                        <div class="app-panel-body">
+                            <div class="power-flow-map" id="dashboard_power_flow">
+                                <svg class="power-flow-svg" viewBox="0 0 860 360" preserveAspectRatio="none"
+                                    aria-hidden="true">
+                                    <path class="power-flow-track" d="M 188 110 C 265 110, 330 140, 410 170" />
+                                    <path class="power-flow-track" d="M 188 250 C 265 250, 330 220, 410 190" />
+                                    <path class="power-flow-track" d="M 450 170 C 530 140, 595 110, 672 110" />
+                                    <path class="power-flow-track" d="M 450 190 C 530 220, 595 250, 672 250" />
+
+                                    <path id="flow_link_solar_hub"
+                                        class="power-flow-link power-flow-link-solar power-flow-link-forward"
+                                        d="M 188 110 C 265 110, 330 140, 410 170" />
+                                    <path id="flow_link_grid_hub"
+                                        class="power-flow-link power-flow-link-grid power-flow-link-forward"
+                                        d="M 188 250 C 265 250, 330 220, 410 190" />
+                                    <path id="flow_link_hub_grid_export"
+                                        class="power-flow-link power-flow-link-grid power-flow-link-forward"
+                                        d="M 410 190 C 330 220, 265 250, 188 250" />
+                                    <path id="flow_link_hub_house"
+                                        class="power-flow-link power-flow-link-house power-flow-link-forward"
+                                        d="M 450 170 C 530 140, 595 110, 672 110" />
+                                    <path id="flow_link_hub_battery_charge"
+                                        class="power-flow-link power-flow-link-battery power-flow-link-forward"
+                                        d="M 450 190 C 530 220, 595 250, 672 250" />
+                                    <path id="flow_link_battery_hub_discharge"
+                                        class="power-flow-link power-flow-link-battery power-flow-link-forward"
+                                        d="M 672 250 C 595 250, 530 220, 450 190" />
+                                </svg>
+
+                                <div class="power-flow-connection-label power-flow-connection-label-solar power-flow-connection-label-solar-hub"
+                                    id="flow_label_solar_hub" aria-hidden="true"></div>
+                                <div class="power-flow-connection-label power-flow-connection-label-grid power-flow-connection-label-grid-hub"
+                                    id="flow_label_grid_hub" aria-hidden="true"></div>
+                                <div class="power-flow-connection-label power-flow-connection-label-grid power-flow-connection-label-hub-grid-export"
+                                    id="flow_label_hub_grid_export" aria-hidden="true"></div>
+                                <div class="power-flow-connection-label power-flow-connection-label-house power-flow-connection-label-hub-house"
+                                    id="flow_label_hub_house" aria-hidden="true"></div>
+                                <div class="power-flow-connection-label power-flow-connection-label-battery power-flow-connection-label-hub-battery-charge"
+                                    id="flow_label_hub_battery_charge" aria-hidden="true"></div>
+                                <div class="power-flow-connection-label power-flow-connection-label-battery power-flow-connection-label-battery-hub-discharge"
+                                    id="flow_label_battery_hub_discharge" aria-hidden="true"></div>
+
+                                <article class="power-flow-node power-flow-node-solar" id="flow_node_solar">
+                                    <div class="power-flow-node-core">
+                                        <div class="power-flow-node-icon">
+                                            <i class="fas fa-solar-panel"></i>
+                                        </div>
+                                    </div>
+                                    <div class="power-flow-node-copy">
+                                        <span class="power-flow-node-label" id="dash_flow_node_solar">Solar</span>
+                                        <span class="power-flow-node-value" id="dash_flow_value_solar">--</span>
+                                        <span class="power-flow-node-meta" id="dash_flow_meta_solar">--</span>
+                                    </div>
+                                </article>
+
+                                <article class="power-flow-node power-flow-node-grid" id="flow_node_grid">
+                                    <div class="power-flow-node-core">
+                                        <div class="power-flow-node-icon">
+                                            <i class="fas fa-plug-circle-bolt"></i>
+                                        </div>
+                                    </div>
+                                    <div class="power-flow-node-copy">
+                                        <span class="power-flow-node-label" id="dash_flow_node_grid">Grid</span>
+                                        <span class="power-flow-node-value" id="dash_flow_value_grid">--</span>
+                                        <span class="power-flow-node-meta" id="dash_flow_meta_grid">--</span>
+                                    </div>
+                                </article>
+
+                                <article class="power-flow-node power-flow-node-hub" id="flow_node_hub">
+                                    <div class="power-flow-node-core">
+                                        <div class="power-flow-node-icon">
+                                            <i class="fas fa-microchip"></i>
+                                        </div>
+                                    </div>
+                                    <div class="power-flow-node-copy">
+                                        <span class="power-flow-node-label" id="dash_flow_node_hub">Inverter</span>
+                                        <span class="power-flow-node-value" id="dash_flow_value_hub">--</span>
+                                        <span class="power-flow-node-meta" id="dash_flow_meta_hub">--</span>
+                                    </div>
+                                </article>
+
+                                <article class="power-flow-node power-flow-node-home" id="flow_node_home">
+                                    <div class="power-flow-node-core">
+                                        <div class="power-flow-node-icon">
+                                            <i class="fas fa-house"></i>
+                                        </div>
+                                    </div>
+                                    <div class="power-flow-node-copy">
+                                        <span class="power-flow-node-label" id="dash_flow_node_home">Home</span>
+                                        <span class="power-flow-node-value" id="dash_flow_value_home">--</span>
+                                        <span class="power-flow-node-meta" id="dash_flow_meta_home">--</span>
+                                    </div>
+                                </article>
+
+                                <article class="power-flow-node power-flow-node-battery" id="flow_node_battery">
+                                    <div class="power-flow-node-core">
+                                        <div class="power-flow-node-icon power-flow-battery-visual" aria-hidden="true">
+                                            <span class="power-flow-battery-glyph">
+                                                <span class="power-flow-battery-level"></span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="power-flow-node-copy">
+                                        <span class="power-flow-node-label" id="dash_flow_node_battery">Battery</span>
+                                        <span class="power-flow-node-value" id="dash_flow_value_battery">--</span>
+                                        <span class="power-flow-node-meta" id="dash_flow_meta_battery">--</span>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="dashboard-grid">
+                        <section class="app-panel metric-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="dash_card_current">Current</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <div id="dash_current_table"></div>
+                            </div>
+                        </section>
+
+                        <section class="app-panel metric-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="dash_card_battery">Battery</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <div id="dash_battery_table"></div>
+                            </div>
+                        </section>
+
+                        <section class="app-panel metric-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="dash_card_today">Today</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <div id="dash_solar_table"></div>
+                            </div>
+                        </section>
+
+                        <section class="app-panel metric-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="dash_card_all_time">All Time</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <div id="dash_device_table"></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <section class="app-panel chart-panel">
+                        <div class="app-panel-head app-panel-head-between">
+                            <span class="app-panel-title" id="dash_card_24h">Latest Data</span>
+                            <div class="app-segmented-control" aria-label="Dashboard time span">
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="2"
+                                    onclick="changeDashboardGraphTimeSpan(2);">2h</button>
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="4"
+                                    onclick="changeDashboardGraphTimeSpan(4);">4h</button>
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="12"
+                                    onclick="changeDashboardGraphTimeSpan(12);">12h</button>
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="24"
+                                    onclick="changeDashboardGraphTimeSpan(24);">24h</button>
+                            </div>
+                        </div>
+                        <div class="app-panel-body">
+                            <div class="chart-shell chart-shell-dashboard" id="dashboard_chart_shell">
+                                <canvas id="chart_dashboard"></canvas>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="container-fluid px-4 app-view" id="view_statistics" data-default-display="block">
+                    <div class="app-view-head">
+                        <div>
+                            <h1 class="app-view-title" id="headline_statistics">Statistics</h1>
+                            <p class="app-view-subtitle">Production overview and runtime reference.</p>
+                            <div class="app-view-status" id="statistics_status" data-default-display="inline-flex"
+                                style="display: none;" role="status" aria-live="polite"></div>
+                        </div>
+                    </div>
+
+                    <div class="stats-hero-grid">
+                        <section class="app-panel stat-hero-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="stats_card_highest_prod">Highest Production</span>
+                            </div>
+                            <div class="app-panel-body text-center">
+                                <p class="stat-hero-value" id="stats_highest_prod_value">...</p>
+                                <p class="stat-hero-caption" id="stats_highest_prod_date">...</p>
+                            </div>
+                        </section>
+
+                        <section class="app-panel stat-hero-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="stats_card_best_day">Best Day</span>
+                            </div>
+                            <div class="app-panel-body text-center">
+                                <p class="stat-hero-value" id="stats_best_day_value">...</p>
+                                <p class="stat-hero-caption" id="stats_best_day_date">...</p>
+                            </div>
+                        </section>
+
+                        <section class="app-panel stat-hero-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="stats_card_best_month">Best Month</span>
+                            </div>
+                            <div class="app-panel-body text-center">
+                                <p class="stat-hero-value" id="stats_best_month_value">...</p>
+                                <p class="stat-hero-caption" id="stats_best_month_date">...</p>
+                            </div>
+                        </section>
+
+                        <section class="app-panel stat-hero-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="stats_card_best_year">Best Year</span>
+                            </div>
+                            <div class="app-panel-body text-center">
+                                <p class="stat-hero-value" id="stats_best_year_value">...</p>
+                                <p class="stat-hero-caption" id="stats_best_year_date">...</p>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="stats-detail-grid">
+                        <section class="app-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="stats_card_averages">Averages</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <table class="table table-borderless app-data-table">
+                                    <tbody>
+                                        <tr>
+                                            <td><i class="fas fa-solar-panel me-1"></i></td>
+                                            <td id="statistics_text_avg_daily_prod">Average daily production</td>
+                                            <td class="text-end" id="statistics_value_avg_daily_prod">...</td>
+                                            <td class="text-end app-unit-cell">kWh</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="app-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="stats_card_runtime">Runtime</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <table class="table table-borderless app-data-table">
+                                    <tbody>
+                                        <tr>
+                                            <td><i class="fas fa-flag-checkered me-1"></i></td>
+                                            <td id="statistics_text_start_date">Date of commissioning</td>
+                                            <td class="text-end" id="statistics_value_start_date">...</td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-clock me-1"></i></td>
+                                            <td id="statistics_text_runtime">Total runtime</td>
+                                            <td class="text-end" id="statistics_value_runtime">...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <div class="container-fluid px-4 app-view" id="view_history" data-default-display="block">
+                    <div class="app-view-head">
+                        <div>
+                            <h1 class="app-view-title" id="headline_history">...</h1>
+                            <p class="app-view-subtitle">Filter a period and inspect production, consumption and daily curves.</p>
+                            <div class="app-view-status" id="history_status" data-default-display="inline-flex"
+                                style="display: none;" role="status" aria-live="polite"></div>
+                        </div>
+                    </div>
+
+                    <section class="app-panel history-toolbar" id="history_toolbar">
+                        <div class="app-panel-body">
+                            <div class="history-toolbar-controls">
+                                <button id="selection_prev" type="button" class="app-icon-button"
+                                    onclick="datePrev();">
+                                    <i class="fa-solid fa-angle-left"></i>
+                                </button>
+                                <div id="selection_year">
+                                    <select class="form-select app-select" id="selection_year2"
+                                        onchange="updateHistoryStats();"></select>
+                                </div>
+                                <div id="selection_month">
+                                    <select class="form-select app-select" id="selection_month2"
+                                        onchange="updateHistoryStats();">
+                                        <option value="1" id="cbx_month_1">January</option>
+                                        <option value="2" id="cbx_month_2">February</option>
+                                        <option value="3" id="cbx_month_3">March</option>
+                                        <option value="4" id="cbx_month_4">April</option>
+                                        <option value="5" id="cbx_month_5">May</option>
+                                        <option value="6" id="cbx_month_6">June</option>
+                                        <option value="7" id="cbx_month_7">July</option>
+                                        <option value="8" id="cbx_month_8">August</option>
+                                        <option value="9" id="cbx_month_9">September</option>
+                                        <option value="10" id="cbx_month_10">October</option>
+                                        <option value="11" id="cbx_month_11">November</option>
+                                        <option value="12" id="cbx_month_12">December</option>
+                                    </select>
+                                </div>
+                                <div id="selection_day">
+                                    <select class="form-select app-select" id="selection_day2"
+                                        onchange="updateHistoryStats();"></select>
+                                </div>
+                                <button id="selection_next" type="button" class="app-icon-button"
+                                    onclick="dateNext();">
+                                    <i class="fa-solid fa-angle-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div id="row_history_data">
+                        <div class="history-summary-grid">
+                            <section class="app-panel">
+                                <div class="app-panel-head">
+                                    <span class="app-panel-title" id="history_card_usage">Usage of Produced Energy</span>
+                                </div>
+                                <div class="app-panel-body">
+                                    <table class="table table-borderless app-data-table">
+                                        <tbody>
+                                            <tr class="fw-semibold">
+                                                <td><i class="fas fa-solar-panel me-1"></i></td>
+                                                <td id="history_text_produced">Energy produced</td>
+                                                <td class="text-end" id="history_stat_produced">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="chart-shell chart-shell-donut" id="history_chart_usage_shell">
+                                        <canvas id="chart_usage"></canvas>
+                                    </div>
+                                    <table class="table table-borderless app-data-table">
+                                        <tbody>
+                                            <tr>
+                                                <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
+                                                <td id="history_text_fedin">Fed into the grid</td>
+                                                <td class="text-end" id="history_stat_fedin">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="fas fa-lightbulb me-1"></i></td>
+                                                <td id="history_text_self_consumed">Used by house</td>
+                                                <td class="text-end" id="history_stat_self_consumed">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="fas fa-battery-half me-1"></i></td>
+                                                <td id="history_text_battery_charge">To battery (est.)</td>
+                                                <td class="text-end" id="history_stat_battery_charge">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section class="app-panel">
+                                <div class="app-panel-head">
+                                    <span class="app-panel-title" id="history_card_consumption">Power Consumption</span>
+                                </div>
+                                <div class="app-panel-body">
+                                    <table class="table table-borderless app-data-table">
+                                        <tbody>
+                                            <tr class="fw-semibold">
+                                                <td><i class="fas fa-lightbulb me-1"></i></td>
+                                                <td id="history_text_consumption_total">Total consumption</td>
+                                                <td class="text-end" id="history_stat_consumption_total">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="chart-shell chart-shell-donut" id="history_chart_consumption_shell">
+                                        <canvas id="chart_consumption"></canvas>
+                                    </div>
+                                    <table class="table table-borderless app-data-table">
+                                        <tbody>
+                                            <tr>
+                                                <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
+                                                <td id="history_text_consumption_grid">Consumption from grid</td>
+                                                <td class="text-end" id="history_stat_consumption_grid">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                            <tr>
+                                                <td><i class="fas fa-solar-panel me-1"></i></td>
+                                                <td id="history_text_consumption_self">Consumption from PV</td>
+                                                <td class="text-end" id="history_stat_consumption_self">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                    <tr>
+                                                <td><i class="fas fa-battery-half me-1"></i></td>
+                                                <td id="history_text_consumption_battery">Consumption from battery</td>
+                                                <td class="text-end" id="history_stat_consumption_battery">0.0</td>
+                                                <td class="text-end app-unit-cell">kWh</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <div class="history-side-stack">
+                                <section class="app-panel">
+                                    <div class="app-panel-head">
+                                        <span class="app-panel-title" id="history_card_autarky">Autarky</span>
+                                    </div>
+                                    <div class="app-panel-body">
+                                        <table class="table table-borderless app-data-table">
+                                            <tbody>
+                                                <tr>
+                                                    <td><i class="fas fa-leaf me-1"></i></td>
+                                                    <td id="history_text_autarky">Autarky</td>
+                                                    <td class="text-end" id="history_stat_autarky">0</td>
+                                                    <td class="text-end app-unit-cell">%</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+
+                                <section class="app-panel">
+                                    <div class="app-panel-head">
+                                        <span class="app-panel-title" id="history_card_earned">Earnings</span>
+                                    </div>
+                                    <div class="app-panel-body">
+                                        <table class="table table-borderless app-data-table">
+                                            <tbody>
+                                                <tr>
+                                                    <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
+                                                    <td id="history_text_earned_feedin">Earned with feed-in</td>
+                                                    <td class="text-end" id="history_stat_earned_feedin">0.0</td>
+                                                    <td class="text-end app-unit-cell">€</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><i class="fas fa-lightbulb me-1"></i></td>
+                                                    <td id="history_text_earned_self">Saved via self-consumption</td>
+                                                    <td class="text-end" id="history_stat_earned_self">0.0</td>
+                                                    <td class="text-end app-unit-cell">€</td>
+                                                </tr>
+                                                <tr class="fw-semibold">
+                                                    <td><i class="fas fa-sack-dollar me-1"></i></td>
+                                                    <td id="history_text_earned_total">Total</td>
+                                                    <td class="text-end" id="history_stat_earned_total">0.0</td>
+                                                    <td class="text-end app-unit-cell">€</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+
+                        <div id="history_card_graphs">
+                            <div class="history-details-grid">
+                                <section class="app-panel">
+                                    <div class="app-panel-head">
+                                        <span class="app-panel-title" id="history_card_graph_production_text">Details</span>
+                                    </div>
+                                    <div class="app-panel-body">
+                                        <div class="chart-shell chart-shell-medium" id="history_chart_details_production_shell">
+                                            <canvas id="chart_history_details_production"></canvas>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="app-panel">
+                                    <div class="app-panel-head">
+                                        <span class="app-panel-title" id="history_card_graph_consumption_text">Details</span>
+                                    </div>
+                                    <div class="app-panel-body">
+                                        <div class="chart-shell chart-shell-medium" id="history_chart_details_consumption_shell">
+                                            <canvas id="chart_history_details_consumption"></canvas>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="history_card_high_res">
+                        <section class="app-panel">
+                            <div class="app-panel-head">
+                                <span class="app-panel-title" id="history_card_high_res_data_text">Course of the day</span>
+                            </div>
+                            <div class="app-panel-body">
+                                <div class="chart-shell chart-shell-history" id="history_chart_high_res_shell">
+                                    <canvas id="chart_history_high_res"></canvas>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div id="row_error_banner" data-default-display="block" style="display: none;">
+                        <div class="alert app-alert" role="alert">
+                            <i class="fas fa-circle-info me-1"></i>
+                            <span id="info_no_data">No data is available for the selected time span.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container-fluid px-4 app-view" id="view_csv" data-default-display="block">
+                    <div class="app-view-head">
+                        <div>
+                            <h1 class="app-view-title" id="headline_csv">CSV Download</h1>
+                            <p class="app-view-subtitle" id="csv_subtitle">...</p>
+                        </div>
+                    </div>
+
+                    <section class="app-panel csv-panel">
+                        <div class="app-panel-body">
+                            <div class="csv-grid">
+                                <div>
+                                    <label class="app-section-label" id="csv_label_time_range">Time range:</label>
+                                    <div class="app-toggle-group">
+                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_day"
+                                            autocomplete="off" checked onchange="updateCsvDateSelector();">
+                                        <label class="app-toggle-label" for="csv_range_rad_day"
+                                            id="csv_range_rad_lbl_day">One day</label>
+
+                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_month"
+                                            autocomplete="off" onchange="updateCsvDateSelector();">
+                                        <label class="app-toggle-label" for="csv_range_rad_month"
+                                            id="csv_range_rad_lbl_month">One month</label>
+
+                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_year"
+                                            autocomplete="off" onchange="updateCsvDateSelector();">
+                                        <label class="app-toggle-label" for="csv_range_rad_year"
+                                            id="csv_range_rad_lbl_year">One year</label>
+
+                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_all"
+                                            autocomplete="off" onchange="updateCsvDateSelector();">
+                                        <label class="app-toggle-label" for="csv_range_rad_all"
+                                            id="csv_range_rad_lbl_all">All time</label>
+                                    </div>
+                                </div>
+
+                                <div class="csv-selectors">
+                                    <div id="csv_selection_year">
+                                        <select class="form-select app-select" id="csv_selection_year2"></select>
+                                    </div>
+                                    <div id="csv_selection_month">
+                                        <select class="form-select app-select" id="csv_selection_month2">
+                                            <option value="1" id="csv_cbx_month_1">January</option>
+                                            <option value="2" id="csv_cbx_month_2">February</option>
+                                            <option value="3" id="csv_cbx_month_3">March</option>
+                                            <option value="4" id="csv_cbx_month_4">April</option>
+                                            <option value="5" id="csv_cbx_month_5">May</option>
+                                            <option value="6" id="csv_cbx_month_6">June</option>
+                                            <option value="7" id="csv_cbx_month_7">July</option>
+                                            <option value="8" id="csv_cbx_month_8">August</option>
+                                            <option value="9" id="csv_cbx_month_9">September</option>
+                                            <option value="10" id="csv_cbx_month_10">October</option>
+                                            <option value="11" id="csv_cbx_month_11">November</option>
+                                            <option value="12" id="csv_cbx_month_12">December</option>
+                                        </select>
+                                    </div>
+                                    <div id="csv_selection_day">
+                                        <select class="form-select app-select" id="csv_selection_day2"></select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="app-section-label" id="csv_label_resolution">Resolution:</label>
+                                    <div class="app-toggle-group">
+                                        <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_day"
+                                            autocomplete="off" checked>
+                                        <label class="app-toggle-label" for="csv_res_rad_day"
+                                            id="csv_res_rad_lbl_day">Single days</label>
+
+                                        <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_month"
+                                            autocomplete="off">
+                                        <label class="app-toggle-label" for="csv_res_rad_month"
+                                            id="csv_res_rad_lbl_month">Summed by month</label>
+
+                                        <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_year"
+                                            autocomplete="off">
+                                        <label class="app-toggle-label" for="csv_res_rad_year"
+                                            id="csv_res_rad_lbl_year">Summed by year</label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <button type="button" class="app-primary-button" onclick="downloadCsv();">
+                                        <i class="fas fa-download me-2"></i>
+                                        <span id="csv_button_download">Download</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="lib/bootstrap.bundle.min.js?build=20260404b"></script>
+    <script src="js/version.js?build=20260404b"></script>
+    <script src="js/sidebar.js?build=20260405b"></script>
+    <script src="js/localization.js?build=20260407g"></script>
+    <script src="js/csv.js?build=20260405a"></script>
+    <script src="lib/hammer.min.js?build=20260404b"></script>
+    <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
+    <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
+    <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
+    <script src="js/chart_factory.js?build=20260407h"></script>
+    <script src="js/info_graphic.js?build=20260406b"></script>
+    <script src="js/dev_mock.js?build=20260404b"></script>
+    <script src="js/main.js?build=20260407d"></script>
+</body>
+
+</html>
