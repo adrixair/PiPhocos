@@ -18,7 +18,7 @@ const histories = {
 let gCurHistory = histories.DAY;
 
 let gCurDate = new Date();
-let gMinDate = null
+let gDateAvailability = null;
 
 let gDahboardGraphTimespan = 24
 
@@ -204,19 +204,8 @@ function parseHistoryDateForViewState(value, mode) {
     return candidate;
 }
 
-function clampSelectableDate(date) {
-    if (!(date instanceof Date) || !Number.isFinite(date.getTime()))
-        return new Date();
-
-    const clamped = new Date(date);
-    if (gMinDate instanceof Date && Number.isFinite(gMinDate.getTime()) && clamped < gMinDate)
-        clamped.setTime(gMinDate.getTime());
-
-    const maxDate = new Date();
-    if (clamped > maxDate)
-        clamped.setTime(maxDate.getTime());
-
-    return clamped;
+function createSelectionDate(year, month = 1, day = 1) {
+    return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0, 0);
 }
 
 function formatHistoryDateForViewState(mode) {
@@ -854,20 +843,18 @@ function setHistoryLoadingState(loading) {
     setChartShellLoadingState(HISTORY_CHART_SHELL_IDS, loading);
 }
 
-function getHistoryDateForMode(mode, initialDate = "") {
-    if (mode === histories.TODAY)
-        return new Date();
+function getInitialHistorySelectionKey(mode, initialDate = "") {
     if (mode === histories.ALL)
         return null;
 
     const parsed = parseHistoryDateForViewState(initialDate, mode);
     if (parsed != null)
-        return clampSelectableDate(parsed);
+        return getPeriodKeyFromDate(mode, parsed);
 
     if (gCurDate instanceof Date && Number.isFinite(gCurDate.getTime()))
-        return clampSelectableDate(gCurDate);
+        return getPeriodKeyFromDate(mode, gCurDate);
 
-    return clampSelectableDate(new Date());
+    return null;
 }
 
 function buildDashboardRow(entry, payload) {
@@ -1118,12 +1105,352 @@ function initSelectionBoxes() {
     if (gDateSelectorsInitialized)
         return;
     gDateSelectorsInitialized = true;
+}
 
-    // Days: numbers 1 to 31
-    for (let i = 1; i <= 31; i++) {
-        addSelectionItem("selection_day2", i.toString(), i.toString());
-        addSelectionItem("csv_selection_day2", i.toString(), i.toString());
+function normalizeDateAvailabilityPayload(dates) {
+    const normalized = {
+        day: {
+            values: [],
+            years: [],
+            monthsByYear: {},
+            daysByMonth: {},
+            min: null,
+            max: null,
+        },
+        month: {
+            values: [],
+            years: [],
+            monthsByYear: {},
+            min: null,
+            max: null,
+        },
+        year: {
+            values: [],
+            min: null,
+            max: null,
+        },
+    };
+
+    const uniqueSortedStrings = values => Array.from(new Set(values.map(String))).sort();
+    const uniqueSortedNumbers = values => Array.from(new Set(values.map(Number).filter(Number.isFinite))).sort((a, b) => a - b);
+
+    const rawDayValues = Array.isArray(dates?.available_days?.values)
+        ? dates.available_days.values.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
+        : [];
+    normalized.day.values = uniqueSortedStrings(rawDayValues);
+
+    normalized.day.values.forEach(dayValue => {
+        const [yearText, monthText, dayText] = dayValue.split("-");
+        if (normalized.day.monthsByYear[yearText] == null)
+            normalized.day.monthsByYear[yearText] = [];
+        normalized.day.monthsByYear[yearText].push(Number(monthText));
+
+        const monthKey = yearText + "-" + monthText;
+        if (normalized.day.daysByMonth[monthKey] == null)
+            normalized.day.daysByMonth[monthKey] = [];
+        normalized.day.daysByMonth[monthKey].push(Number(dayText));
+    });
+
+    Object.keys(normalized.day.monthsByYear).forEach(yearKey => {
+        normalized.day.monthsByYear[yearKey] = uniqueSortedNumbers(normalized.day.monthsByYear[yearKey]);
+    });
+    Object.keys(normalized.day.daysByMonth).forEach(monthKey => {
+        normalized.day.daysByMonth[monthKey] = uniqueSortedNumbers(normalized.day.daysByMonth[monthKey]);
+    });
+    normalized.day.years = uniqueSortedNumbers(
+        Object.keys(normalized.day.monthsByYear).map(value => Number(value))
+    );
+    normalized.day.min = normalized.day.values[0] || null;
+    normalized.day.max = normalized.day.values[normalized.day.values.length - 1] || null;
+
+    const rawMonthValues = Array.isArray(dates?.available_months?.values)
+        ? dates.available_months.values.filter(value => /^\d{4}-\d{2}$/.test(String(value)))
+        : Array.from(new Set(normalized.day.values.map(value => value.slice(0, 7))));
+    normalized.month.values = uniqueSortedStrings(rawMonthValues);
+    normalized.month.values.forEach(monthValue => {
+        const [yearText, monthText] = monthValue.split("-");
+        if (normalized.month.monthsByYear[yearText] == null)
+            normalized.month.monthsByYear[yearText] = [];
+        normalized.month.monthsByYear[yearText].push(Number(monthText));
+    });
+    Object.keys(normalized.month.monthsByYear).forEach(yearKey => {
+        normalized.month.monthsByYear[yearKey] = uniqueSortedNumbers(normalized.month.monthsByYear[yearKey]);
+    });
+    normalized.month.years = uniqueSortedNumbers(
+        Object.keys(normalized.month.monthsByYear).map(value => Number(value))
+    );
+    normalized.month.min = normalized.month.values[0] || null;
+    normalized.month.max = normalized.month.values[normalized.month.values.length - 1] || null;
+
+    const rawYearValues = Array.isArray(dates?.available_years?.values)
+        ? dates.available_years.values
+        : normalized.month.years;
+    normalized.year.values = uniqueSortedNumbers(rawYearValues);
+
+    if (normalized.year.values.length === 0) {
+        const yearMin = Number(dates?.year_min);
+        const yearMax = Number(dates?.year_max);
+        if (Number.isFinite(yearMin) && Number.isFinite(yearMax)) {
+            for (let year = yearMin; year <= yearMax; year++)
+                normalized.year.values.push(year);
+        }
     }
+
+    normalized.year.min = normalized.year.values[0] ?? null;
+    normalized.year.max = normalized.year.values[normalized.year.values.length - 1] ?? null;
+    return normalized;
+}
+
+function getDateAvailabilityForMode(mode) {
+    switch (mode) {
+        case histories.TODAY:
+        case histories.DAY:
+            return gDateAvailability?.day || null;
+        case histories.MONTH:
+            return gDateAvailability?.month || null;
+        case histories.YEAR:
+            return gDateAvailability?.year || null;
+        default:
+            return null;
+    }
+}
+
+function getCsvRangeMode() {
+    if (document.getElementById("csv_range_rad_day")?.checked === true)
+        return histories.DAY;
+    if (document.getElementById("csv_range_rad_month")?.checked === true)
+        return histories.MONTH;
+    if (document.getElementById("csv_range_rad_year")?.checked === true)
+        return histories.YEAR;
+    return histories.ALL;
+}
+
+function getSelectionControlId(prefix, name) {
+    return prefix + "selection_" + name + "2";
+}
+
+function getSelectionValue(controlId) {
+    const element = document.getElementById(controlId);
+    return element?.value?.toString() || "";
+}
+
+function setSelectionOptions(controlId, options, selectedValue) {
+    const select = document.getElementById(controlId);
+    if (select == null)
+        return;
+
+    const normalizedSelectedValue = selectedValue == null ? "" : String(selectedValue);
+    select.replaceChildren();
+
+    options.forEach(option => {
+        const node = document.createElement("option");
+        node.value = String(option.value);
+        node.textContent = String(option.label);
+        select.appendChild(node);
+    });
+
+    if (options.length === 0) {
+        select.value = "";
+        select.setAttribute("disabled", "");
+        return;
+    }
+
+    select.removeAttribute("disabled");
+    const fallbackValue = String(options[0].value);
+    const nextValue = options.some(option => String(option.value) === normalizedSelectedValue)
+        ? normalizedSelectedValue
+        : fallbackValue;
+    select.value = nextValue;
+}
+
+function buildYearOptions(values) {
+    return values.map(value => ({
+        value: String(value),
+        label: String(value),
+    }));
+}
+
+function buildMonthOptions(values) {
+    return values.map(value => ({
+        value: String(value),
+        label: getMonthName(Number(value) - 1),
+    }));
+}
+
+function buildDayOptions(values) {
+    return values.map(value => ({
+        value: String(value),
+        label: String(value),
+    }));
+}
+
+function getPeriodKeyFromDate(mode, date) {
+    if (!(date instanceof Date) || !Number.isFinite(date.getTime()))
+        return null;
+
+    const year = date.getFullYear();
+    const month = padStr(date.getMonth() + 1);
+    const day = padStr(date.getDate());
+
+    switch (mode) {
+        case histories.MONTH:
+            return year + "-" + month;
+        case histories.YEAR:
+            return String(year);
+        case histories.DAY:
+        case histories.TODAY:
+            return year + "-" + month + "-" + day;
+        default:
+            return null;
+    }
+}
+
+function getPeriodKeyFromSelectors(mode, prefix = "") {
+    if (mode === histories.ALL)
+        return null;
+
+    const year = getSelectionValue(getSelectionControlId(prefix, "year"));
+    const month = padStr(getSelectionValue(getSelectionControlId(prefix, "month")));
+    const day = padStr(getSelectionValue(getSelectionControlId(prefix, "day")));
+
+    if (!year)
+        return null;
+
+    switch (mode) {
+        case histories.MONTH:
+            return year + "-" + month;
+        case histories.YEAR:
+            return year;
+        case histories.DAY:
+        case histories.TODAY:
+        default:
+            return year + "-" + month + "-" + day;
+    }
+}
+
+function resolveAvailableKey(values, desiredKey) {
+    if (!Array.isArray(values) || values.length === 0)
+        return null;
+
+    if (desiredKey == null || desiredKey === "")
+        return values[values.length - 1];
+
+    const normalizedKey = String(desiredKey);
+    if (values.includes(normalizedKey))
+        return normalizedKey;
+
+    if (normalizedKey <= values[0])
+        return values[0];
+
+    for (let i = values.length - 1; i >= 0; i--) {
+        if (values[i] <= normalizedKey)
+            return values[i];
+    }
+
+    return values[values.length - 1];
+}
+
+function parsePeriodKey(mode, key) {
+    if (typeof key !== "string" || key === "")
+        return null;
+
+    if ((mode === histories.DAY || mode === histories.TODAY) && /^\d{4}-\d{2}-\d{2}$/.test(key)) {
+        const [year, month, day] = key.split("-").map(Number);
+        return { year, month, day };
+    }
+
+    if (mode === histories.MONTH && /^\d{4}-\d{2}$/.test(key)) {
+        const [year, month] = key.split("-").map(Number);
+        return { year, month, day: 1 };
+    }
+
+    if (mode === histories.YEAR && /^\d{4}$/.test(key))
+        return { year: Number(key), month: 1, day: 1 };
+
+    return null;
+}
+
+function applyPeriodKeyToSelectors(prefix, mode, desiredKey) {
+    const availability = getDateAvailabilityForMode(mode);
+    if (availability == null || !Array.isArray(availability.values) || availability.values.length === 0) {
+        setSelectionOptions(getSelectionControlId(prefix, "year"), [], "");
+        setSelectionOptions(getSelectionControlId(prefix, "month"), [], "");
+        setSelectionOptions(getSelectionControlId(prefix, "day"), [], "");
+        return null;
+    }
+
+    const resolvedKey = resolveAvailableKey(availability.values.map(String), desiredKey);
+    const parts = parsePeriodKey(mode, String(resolvedKey));
+    if (parts == null)
+        return null;
+
+    if (mode === histories.YEAR) {
+        setSelectionOptions(
+            getSelectionControlId(prefix, "year"),
+            buildYearOptions(availability.values),
+            parts.year
+        );
+        return resolvedKey;
+    }
+
+    setSelectionOptions(
+        getSelectionControlId(prefix, "year"),
+        buildYearOptions(availability.years || []),
+        parts.year
+    );
+
+    const months = availability.monthsByYear?.[String(parts.year)] || [];
+    setSelectionOptions(
+        getSelectionControlId(prefix, "month"),
+        buildMonthOptions(months),
+        parts.month
+    );
+
+    if (mode === histories.MONTH)
+        return resolvedKey;
+
+    const monthKey = String(parts.year) + "-" + padStr(parts.month);
+    const days = availability.daysByMonth?.[monthKey] || [];
+    setSelectionOptions(
+        getSelectionControlId(prefix, "day"),
+        buildDayOptions(days),
+        parts.day
+    );
+    return resolvedKey;
+}
+
+function updateHistoryNavigationState(currentKey = null) {
+    const prevButton = document.getElementById("selection_prev");
+    const nextButton = document.getElementById("selection_next");
+    if (prevButton == null || nextButton == null)
+        return;
+
+    const availability = getDateAvailabilityForMode(gCurHistory);
+    const values = Array.isArray(availability?.values) ? availability.values.map(String) : [];
+    const resolvedKey = String(currentKey || getPeriodKeyFromSelectors(gCurHistory) || "");
+    const index = values.indexOf(resolvedKey);
+    const disableNavigation = values.length === 0 || index < 0;
+
+    prevButton.disabled = disableNavigation || index === 0;
+    nextButton.disabled = disableNavigation || index === values.length - 1;
+}
+
+function applyHistorySelectionKey(desiredKey) {
+    const resolvedKey = applyPeriodKeyToSelectors("", gCurHistory, desiredKey);
+    const parts = parsePeriodKey(gCurHistory, resolvedKey);
+
+    if (parts != null)
+        gCurDate = createSelectionDate(parts.year, parts.month, parts.day);
+
+    updateHistoryNavigationState(resolvedKey);
+    return resolvedKey;
+}
+
+function applyCsvSelectionKey(desiredKey) {
+    const mode = getCsvRangeMode();
+    if (mode === histories.ALL)
+        return null;
+    return applyPeriodKeyToSelectors("csv_", mode, desiredKey);
 }
 
 function applyDateBoundsToSelectors(dates) {
@@ -1131,12 +1458,15 @@ function applyDateBoundsToSelectors(dates) {
         return;
 
     gDateBoundsLoaded = true;
-    gMinDate = new Date(dates["year_min"] + "-01-01");
-    for (let i = dates["year_min"]; i <= dates["year_max"]; i++) {
-        addSelectionItem("selection_year2", i.toString(), i.toString());
-        addSelectionItem("csv_selection_year2", i.toString(), i.toString());
-    }
-    selectDate(new Date());
+    gDateAvailability = normalizeDateAvailabilityPayload(dates);
+
+    const latestDayKey = gDateAvailability?.day?.max || null;
+    const latestDay = parsePeriodKey(histories.DAY, latestDayKey);
+    if (latestDay != null)
+        gCurDate = createSelectionDate(latestDay.year, latestDay.month, latestDay.day);
+
+    applyHistorySelectionKey(getPeriodKeyFromDate(gCurHistory, gCurDate));
+    updateCsvDateSelector();
 }
 
 async function ensureDateBoundsLoaded() {
@@ -1156,19 +1486,6 @@ async function ensureDateBoundsLoaded() {
 
     return gDateBoundsRequest;
 }
-
-function selectDate(date) {
-    gCurDate = date;
-    // Combo boxes 1
-    document.getElementById('selection_year2').value = date.getFullYear();
-    document.getElementById('selection_month2').value = date.getMonth() + 1;
-    document.getElementById('selection_day2').value = date.getDate();
-    // Combo boxes 2
-    document.getElementById('csv_selection_year2').value = date.getFullYear();
-    document.getElementById('csv_selection_month2').value = date.getMonth() + 1;
-    document.getElementById('csv_selection_day2').value = date.getDate();
-}
-
 // Async function to get the important dates
 async function fetchDatesJSON() {
     const response = await fetch(gBaseUrl + 'api/date-bounds');
@@ -1257,15 +1574,26 @@ function updateHistoryStats(options = {}) {
     if (!liveRefresh)
         hideFloatingInfoTooltip(true);
 
-    // Store data
-    let year = document.getElementById('selection_year2').value.toString();
-    let month = document.getElementById('selection_month2').value.toString();
-    let day = document.getElementById('selection_day2').value.toString();
-    gCurDate = new Date(year + "-" + month + "-" + day);
+    const currentPeriodKey = getPeriodKeyFromSelectors(gCurHistory);
+    const currentPeriod = parsePeriodKey(gCurHistory, currentPeriodKey);
+    if (currentPeriod != null)
+        gCurDate = createSelectionDate(currentPeriod.year, currentPeriod.month, currentPeriod.day);
+
     if (!liveRefresh)
         persistCurrentViewState();
     const historySelectionKey = getCurrentHistorySelectionKey();
     const requestToken = ++gHistoryRequestToken;
+
+    if (gCurHistory !== histories.ALL && currentPeriod == null) {
+        if (!liveRefresh) {
+            setHistoryLoadingState(false);
+            setViewBusyState("view_history", false);
+            setViewStatus("history_status", "info", getTextString("info_no_data"));
+            setElementVisible("row_history_data", false);
+            setElementVisible("row_error_banner", false);
+        }
+        return Promise.resolve();
+    }
 
     if (!liveRefresh) {
         setViewBusyState("view_history", true);
@@ -1600,6 +1928,12 @@ function refreshLocalizedContent() {
     gLastHistoryHighResSelectionKey = null;
     gLastHistoryHighResRaw = null;
 
+    if (gDateBoundsLoaded) {
+        if (gCurrentView === "history" && gCurHistory !== histories.ALL)
+            applyHistorySelectionKey(getPeriodKeyFromSelectors(gCurHistory));
+        updateCsvDateSelector();
+    }
+
     if (typeof resetChartsForLanguageChange === "function")
         resetChartsForLanguageChange();
 
@@ -1735,12 +2069,18 @@ function showViewHistory(mode, options = {}) {
         .then(() => {
             if (gCurHistory !== mode || !isHistoryViewVisible())
                 return;
-            const nextDate = getHistoryDateForMode(mode, options.initialDate);
-            if (nextDate != null)
-                selectDate(nextDate);
+            const nextKey = getInitialHistorySelectionKey(mode, options.initialDate);
+            const resolvedKey = applyHistorySelectionKey(nextKey);
             if (options.persist !== false)
                 persistCurrentViewState();
-            updateHistoryStats();
+            if (resolvedKey != null)
+                updateHistoryStats();
+            else {
+                setHistoryLoadingState(false);
+                setViewBusyState("view_history", false);
+                setViewStatus("history_status", "info", getTextString("info_no_data"));
+                setElementVisible("row_history_data", false);
+            }
         })
         .catch(() => {
             if (gCurHistory !== mode || !isHistoryViewVisible())
@@ -1814,43 +2154,51 @@ function updateCsvDateSelector() {
         setElementEnabled("csv_res_rad_month", true);
         setElementEnabled("csv_res_rad_year", true);
     }
+
+    if (gDateBoundsLoaded) {
+        const mode = getCsvRangeMode();
+        if (mode !== histories.ALL)
+            applyCsvSelectionKey(getPeriodKeyFromSelectors(mode, "csv_"));
+    }
 }
 
 
+function onHistorySelectorChange() {
+    const resolvedKey = applyHistorySelectionKey(getPeriodKeyFromSelectors(gCurHistory));
+    if (resolvedKey != null)
+        updateHistoryStats();
+}
+
+function onCsvSelectorChange() {
+    if (!gDateBoundsLoaded)
+        return;
+    const mode = getCsvRangeMode();
+    if (mode === histories.ALL)
+        return;
+    applyCsvSelectionKey(getPeriodKeyFromSelectors(mode, "csv_"));
+}
+
 function datePrev() {
-    let date = new Date(gCurDate)
-    if (gCurHistory == histories.DAY || gCurHistory == histories.TODAY) {
-        date.setDate(date.getDate() - 1);
-    }
-    else if (gCurHistory == histories.MONTH) {
-        date.setMonth(date.getMonth() - 1);
-    }
-    else if (gCurHistory == histories.YEAR) {
-        date.setFullYear(date.getFullYear() - 1);
-    }
+    const availability = getDateAvailabilityForMode(gCurHistory);
+    const values = Array.isArray(availability?.values) ? availability.values.map(String) : [];
+    const currentKey = String(getPeriodKeyFromSelectors(gCurHistory) || "");
+    const currentIndex = values.indexOf(currentKey);
+    if (currentIndex <= 0)
+        return;
 
-    if (date < gMinDate) date = new Date(gMinDate);
-
-    selectDate(date);
+    applyHistorySelectionKey(values[currentIndex - 1]);
     updateHistoryStats();
 }
 
 function dateNext() {
-    let date = new Date(gCurDate)
-    if (gCurHistory == histories.DAY || gCurHistory == histories.TODAY) {
-        date.setDate(date.getDate() + 1);
-    }
-    else if (gCurHistory == histories.MONTH) {
-        date.setMonth(date.getMonth() + 1);
-    }
-    else if (gCurHistory == histories.YEAR) {
-        date.setFullYear(date.getFullYear() + 1);
-    }
+    const availability = getDateAvailabilityForMode(gCurHistory);
+    const values = Array.isArray(availability?.values) ? availability.values.map(String) : [];
+    const currentKey = String(getPeriodKeyFromSelectors(gCurHistory) || "");
+    const currentIndex = values.indexOf(currentKey);
+    if (currentIndex < 0 || currentIndex >= values.length - 1)
+        return;
 
-    const maxDate = new Date()
-    if (date > maxDate) date = new Date(maxDate);
-
-    selectDate(date);
+    applyHistorySelectionKey(values[currentIndex + 1]);
     updateHistoryStats();
 }
 

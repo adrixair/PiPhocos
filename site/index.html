@@ -412,11 +412,11 @@
                                 </button>
                                 <div id="selection_year">
                                     <select class="form-select app-select" id="selection_year2"
-                                        onchange="updateHistoryStats();"></select>
+                                        onchange="onHistorySelectorChange();"></select>
                                 </div>
                                 <div id="selection_month">
                                     <select class="form-select app-select" id="selection_month2"
-                                        onchange="updateHistoryStats();">
+                                        onchange="onHistorySelectorChange();">
                                         <option value="1" id="cbx_month_1">January</option>
                                         <option value="2" id="cbx_month_2">February</option>
                                         <option value="3" id="cbx_month_3">March</option>
@@ -433,7 +433,7 @@
                                 </div>
                                 <div id="selection_day">
                                     <select class="form-select app-select" id="selection_day2"
-                                        onchange="updateHistoryStats();"></select>
+                                        onchange="onHistorySelectorChange();"></select>
                                 </div>
                                 <button id="selection_next" type="button" class="app-icon-button"
                                     onclick="dateNext();">
@@ -668,10 +668,12 @@
 
                                 <div class="csv-selectors">
                                     <div id="csv_selection_year">
-                                        <select class="form-select app-select" id="csv_selection_year2"></select>
+                                        <select class="form-select app-select" id="csv_selection_year2"
+                                            onchange="onCsvSelectorChange();"></select>
                                     </div>
                                     <div id="csv_selection_month">
-                                        <select class="form-select app-select" id="csv_selection_month2">
+                                        <select class="form-select app-select" id="csv_selection_month2"
+                                            onchange="onCsvSelectorChange();">
                                             <option value="1" id="csv_cbx_month_1">January</option>
                                             <option value="2" id="csv_cbx_month_2">February</option>
                                             <option value="3" id="csv_cbx_month_3">March</option>
@@ -687,7 +689,8 @@
                                         </select>
                                     </div>
                                     <div id="csv_selection_day">
-                                        <select class="form-select app-select" id="csv_selection_day2"></select>
+                                        <select class="form-select app-select" id="csv_selection_day2"
+                                            onchange="onCsvSelectorChange();"></select>
                                     </div>
                                 </div>
 
@@ -736,8 +739,8 @@
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
     <script src="js/chart_factory.js?build=20260407h"></script>
     <script src="js/info_graphic.js?build=20260406b"></script>
-    <script src="js/dev_mock.js?build=20260404b"></script>
-    <script src="js/main.js?build=20260407d"></script>
+    <script src="js/dev_mock.js?build=20260408a"></script>
+    <script src="js/main.js?build=20260408a"></script>
 </body>
 
 </html>

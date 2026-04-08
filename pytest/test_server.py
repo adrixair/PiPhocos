@@ -840,6 +840,23 @@ def test_date_bounds_payload_uses_history_samples(tmp_path):
     assert payload["state"] == "ok"
     assert payload["year_min"] == 2024
     assert payload["year_max"] == 2026
+    assert payload["available_days"]["values"] == ["2024-03-01", "2026-04-05"]
+    assert payload["available_days"]["years"] == [2024, 2026]
+    assert payload["available_days"]["months_by_year"] == {
+        "2024": [3],
+        "2026": [4],
+    }
+    assert payload["available_days"]["days_by_month"] == {
+        "2024-03": [1],
+        "2026-04": [5],
+    }
+    assert payload["available_months"]["values"] == ["2024-03", "2026-04"]
+    assert payload["available_months"]["years"] == [2024, 2026]
+    assert payload["available_months"]["months_by_year"] == {
+        "2024": [3],
+        "2026": [4],
+    }
+    assert payload["available_years"]["values"] == [2024, 2026]
 
 
 def test_static_assets_use_immutable_cache_headers():

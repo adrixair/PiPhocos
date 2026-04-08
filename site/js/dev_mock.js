@@ -93,6 +93,79 @@
         };
     }
 
+    function deriveDateBoundsPayload(snapshot) {
+        const base = snapshot.dates || {};
+        const dayValues = Object.keys(snapshot.historical?.days || {}).sort();
+        const monthValues = Object.keys(snapshot.historical?.months || {}).sort();
+        const yearValues = Object.keys(snapshot.historical?.years || {})
+            .map(value => Number(value))
+            .filter(Number.isFinite)
+            .sort((a, b) => a - b);
+
+        const monthsByYear = {};
+        const daysByMonth = {};
+        dayValues.forEach(dayValue => {
+            const [yearText, monthText, dayText] = dayValue.split("-");
+            if (monthsByYear[yearText] == null)
+                monthsByYear[yearText] = [];
+            monthsByYear[yearText].push(Number(monthText));
+
+            const monthKey = yearText + "-" + monthText;
+            if (daysByMonth[monthKey] == null)
+                daysByMonth[monthKey] = [];
+            daysByMonth[monthKey].push(Number(dayText));
+        });
+
+        const monthGroups = {};
+        monthValues.forEach(monthValue => {
+            const [yearText, monthText] = monthValue.split("-");
+            if (monthGroups[yearText] == null)
+                monthGroups[yearText] = [];
+            monthGroups[yearText].push(Number(monthText));
+        });
+
+        return {
+            state: base.state || "ok",
+            year_min: base.year_min ?? (yearValues[0] ?? null),
+            year_max: base.year_max ?? (yearValues[yearValues.length - 1] ?? null),
+            available_days: {
+                values: dayValues,
+                years: Array.from(new Set(dayValues.map(value => Number(value.slice(0, 4))))).sort((a, b) => a - b),
+                months_by_year: Object.fromEntries(
+                    Object.entries(monthsByYear).map(([year, values]) => [
+                        year,
+                        Array.from(new Set(values)).sort((a, b) => a - b),
+                    ])
+                ),
+                days_by_month: Object.fromEntries(
+                    Object.entries(daysByMonth).map(([month, values]) => [
+                        month,
+                        Array.from(new Set(values)).sort((a, b) => a - b),
+                    ])
+                ),
+                min: dayValues[0] || null,
+                max: dayValues[dayValues.length - 1] || null,
+            },
+            available_months: {
+                values: monthValues,
+                years: Array.from(new Set(monthValues.map(value => Number(value.slice(0, 4))))).sort((a, b) => a - b),
+                months_by_year: Object.fromEntries(
+                    Object.entries(monthGroups).map(([year, values]) => [
+                        year,
+                        Array.from(new Set(values)).sort((a, b) => a - b),
+                    ])
+                ),
+                min: monthValues[0] || null,
+                max: monthValues[monthValues.length - 1] || null,
+            },
+            available_years: {
+                values: yearValues,
+                min: yearValues[0] ?? null,
+                max: yearValues[yearValues.length - 1] ?? null,
+            },
+        };
+    }
+
     function createJsonResponse(payload, status) {
         const responseStatus = status || 200;
         return {
@@ -151,7 +224,7 @@
         if (url.pathname.endsWith("/api/tempo"))
             return snapshot.apiTempo || deriveTempoPayload(snapshot);
         if (url.pathname.endsWith("/api/date-bounds"))
-            return snapshot.dates;
+            return deriveDateBoundsPayload(snapshot);
         if (url.pathname.endsWith("/api/statistics"))
             return snapshot.statistics;
         if (url.pathname.endsWith("/api/chart/live"))

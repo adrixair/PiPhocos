@@ -1278,31 +1278,104 @@ def _history_payload_from_derived(db, table, search_date):
     }
 
 
+def _sorted_distinct_summary_values(db, table_name, column_name):
+    rows = db.execute(
+        f"""
+        SELECT DISTINCT {column_name} AS value
+        FROM {table_name}
+        WHERE {column_name} IS NOT NULL
+        ORDER BY {column_name} ASC
+        """
+    )
+    return [row["value"] for row in rows if row and row["value"] is not None]
+
+
+def _day_availability_payload(day_values):
+    years = set()
+    months_by_year = {}
+    days_by_month = {}
+
+    for day_value in day_values:
+        year_text, month_text, day_text = day_value.split("-")
+        years.add(int(year_text))
+        months_by_year.setdefault(year_text, set()).add(int(month_text))
+        days_by_month.setdefault(f"{year_text}-{month_text}", set()).add(int(day_text))
+
+    return {
+        "values": day_values,
+        "years": sorted(years),
+        "months_by_year": {
+            year: sorted(months)
+            for year, months in sorted(months_by_year.items())
+        },
+        "days_by_month": {
+            month: sorted(days)
+            for month, days in sorted(days_by_month.items())
+        },
+        "min": day_values[0] if day_values else None,
+        "max": day_values[-1] if day_values else None,
+    }
+
+
+def _month_availability_payload(month_values):
+    years = set()
+    months_by_year = {}
+
+    for month_value in month_values:
+        year_text, month_text = month_value.split("-")
+        years.add(int(year_text))
+        months_by_year.setdefault(year_text, set()).add(int(month_text))
+
+    return {
+        "values": month_values,
+        "years": sorted(years),
+        "months_by_year": {
+            year: sorted(months)
+            for year, months in sorted(months_by_year.items())
+        },
+        "min": month_values[0] if month_values else None,
+        "max": month_values[-1] if month_values else None,
+    }
+
+
+def _year_availability_payload(year_values):
+    return {
+        "values": year_values,
+        "min": year_values[0] if year_values else None,
+        "max": year_values[-1] if year_values else None,
+    }
+
+
 def _date_bounds_payload(db):
     configured_year = _configured_start_date().year
     current_year = _now_local().year
-    year_values = []
-    for table_name in ("samples", "compressed_samples_10m"):
-        row = db.fetchone(
-            f"""
-            SELECT
-                MIN(local_year) AS year_min,
-                MAX(local_year) AS year_max
-            FROM {table_name}
-            """
+    day_values = _sorted_distinct_summary_values(db, "energy_summary_days", "local_day")
+    month_values = _sorted_distinct_summary_values(
+        db, "energy_summary_months", "local_month"
+    )
+    year_values = [
+        int(value)
+        for value in _sorted_distinct_summary_values(
+            db, "energy_summary_years", "local_year"
         )
-        if not row:
-            continue
-        if row["year_min"] is not None:
-            year_values.append(int(row["year_min"]))
-        if row["year_max"] is not None:
-            year_values.append(int(row["year_max"]))
+    ]
+
+    if not month_values and day_values:
+        month_values = sorted({day_value[:7] for day_value in day_values})
+    if not year_values and month_values:
+        year_values = sorted({int(month_value[:4]) for month_value in month_values})
+    if not year_values and day_values:
+        year_values = sorted({int(day_value[:4]) for day_value in day_values})
+
     year_min = min(year_values) if year_values else configured_year
     year_max = max(year_values) if year_values else current_year
     return {
         "state": "ok",
         "year_min": min(year_min, year_max),
         "year_max": max(year_min, year_max),
+        "available_days": _day_availability_payload(day_values),
+        "available_months": _month_availability_payload(month_values),
+        "available_years": _year_availability_payload(year_values),
     }
 
 
