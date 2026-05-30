@@ -884,6 +884,7 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
         "recorded_at": current["recorded_at"],
         "public_url": config.config_data["server"]["public_url"],
         "current_data_stale": stale,
+        "live_state": "offline" if stale else "live",
         "device": {
             "serial_number": snapshot.get("serial_number"),
             "device_id": snapshot.get("device_id"),

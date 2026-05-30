@@ -717,6 +717,7 @@ def test_overview_payload_marks_stale_snapshots(tmp_path, monkeypatch):
 
     assert payload["state"] == "ok"
     assert payload["current_data_stale"] is True
+    assert payload["live_state"] == "offline"
     assert payload["live_values_zeroed"] is True
     assert payload["live"]["ac_output_active_power_w"]["value"] == 0
     assert payload["live"]["ac_output_active_power_w"]["semantics"] == "stale_zero"
@@ -789,6 +790,7 @@ def test_overview_payload_exposes_dashboard_staleness_and_metric_semantics(tmp_p
 
     assert payload["state"] == "ok"
     assert payload["current_data_stale"] is False
+    assert payload["live_state"] == "live"
     assert "today_data_complete" in payload
     assert payload["live"]["ac_output_active_power_w"]["semantics"] == "exact"
     assert payload["live"]["pv_power_w"]["semantics"] == "derived"

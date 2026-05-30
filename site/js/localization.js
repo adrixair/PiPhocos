@@ -444,8 +444,8 @@ let genericStrings = {
     unit_days: ["days", "jours"],
     stats_best_year_prefix: ["in ", "en "],
     dashboard_stale_note: [
-        "Live values are unavailable because the latest measurement is too old.",
-        "Les valeurs en direct sont indisponibles car la dernière mesure est trop ancienne.",
+        "Offline: no recent measurement, live values are forced to zero.",
+        "Hors live : aucune mesure récente, les valeurs directes sont forcées à zéro.",
     ],
     dashboard_partial_note: [
         "Today's totals exclude one or more communication outages or gaps.",
@@ -460,7 +460,7 @@ let genericStrings = {
     flow_state_charging: ["Charging", "Charge"],
     flow_state_discharging: ["Discharging", "Décharge"],
     flow_state_live: ["Live", "Temps réel"],
-    flow_state_delayed: ["Delayed", "En retard"],
+    flow_state_delayed: ["Offline", "Hors live"],
     telemetry_status_connected: ["Phocos connected", "Phocos connecté"],
     telemetry_status_disconnected: ["Phocos disconnected", "Phocos déconnecté"],
     telemetry_detail_last_sample: ["Last sample ", "Dernière mesure "],
