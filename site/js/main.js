@@ -465,7 +465,7 @@ function renderTelemetryStatus() {
 }
 
 function applyTelemetryStatusFromOverview(stats) {
-    gTelemetryConnectionHealthy = stats != null;
+    gTelemetryConnectionHealthy = stats != null && stats["current_data_stale"] !== true;
 
     if (stats != null && stats["recorded_at"]) {
         const nextRecordedAt = new Date(stats["recorded_at"]);
@@ -860,7 +860,8 @@ function getInitialHistorySelectionKey(mode, initialDate = "") {
 function buildDashboardRow(entry, payload) {
     if (entry.kind == "metric") {
         const metric = payload["live"]?.[entry.key];
-        if (metric == null || metric["value"] == null || metric["semantics"] != "exact")
+        const isStaleZero = payload?.["current_data_stale"] === true && metric?.["semantics"] === "stale_zero";
+        if (metric == null || metric["value"] == null || (metric["semantics"] != "exact" && !isStaleZero))
             return null;
         return {
             icon: entry.icon,
@@ -998,6 +999,8 @@ function updateCurrentStats() {
         const tempoDisplay = stats["pricing"]?.["tempo_display"];
         if (tempoDisplay)
             subtitleText += " | Tempo: " + tempoDisplay;
+        if (stats["current_data_stale"] === true)
+            subtitleText += " | " + getGenericString("dashboard_stale_note");
         document.getElementById("dashboard_subtitle_time").innerHTML = subtitleText;
 
         renderDashboardTable("dash_current_table", dashboardTableConfigs.current, stats);

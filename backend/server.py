@@ -50,6 +50,59 @@ _SCHEMA_LOCK = threading.Lock()
 STATIC_ASSET_CACHE_MAX_AGE_SECONDS = 31536000
 STATIC_ASSET_PREFIXES = ("assets/", "css/", "js/", "lib/")
 STATIC_ASSET_NAMES = {"favicon.ico", "manifest.webmanifest"}
+STALE_ZERO_SEMANTICS = "stale_zero"
+STALE_ZERO_LIVE_METRICS = {
+    "ac_input_voltage_v",
+    "ac_input_frequency_hz",
+    "ac_output_voltage_v",
+    "ac_output_frequency_hz",
+    "ac_output_active_power_w",
+    "ac_output_apparent_power_va",
+    "ac_output_load_percent",
+    "battery_voltage_v",
+    "battery_state_of_charge_percent",
+    "battery_charge_current_a",
+    "battery_discharge_current_a",
+    "total_charging_current_a",
+    "battery_charge_power_w",
+    "battery_discharge_power_w",
+    "pv_input_voltage_v",
+    "pv_input_current_a",
+    "pv_power_w",
+    "pv_charging_power_w",
+    "solar_feed_to_grid_power_w",
+    "total_ac_output_apparent_power_va",
+    "total_output_active_power_w",
+    "total_output_load_percent",
+    "max_charging_current_set_a",
+    "max_charging_current_possible_a",
+    "max_ac_charging_current_set_a",
+    "bus_voltage_v",
+    "inverter_temperature_c",
+    "battery_voltage_from_scc_v",
+    "solar_to_house_power_w",
+    "solar_to_battery_power_w",
+    "battery_to_house_power_w",
+    "grid_to_house_power_w",
+    "grid_to_battery_power_w",
+}
+STALE_DYNAMIC_DEVICE_FIELDS = {
+    "other_units_connected",
+    "other_units_connected_code",
+    "operation_mode",
+    "operation_mode_code",
+    "fault",
+    "fault_code",
+    "ac_output_mode",
+    "output_source_priority",
+    "battery_charger_source_priority",
+}
+STALE_LIVE_TEXT_FIELDS = {
+    "battery_state",
+    "output_source_priority",
+    "battery_charger_source_priority",
+    "status_bits",
+}
 
 
 def _ensure_server_schema(db):
@@ -87,6 +140,41 @@ def _close_db(_exception):
 
 def _metric(value, unit, semantics):
     return {"value": value, "unit": unit, "semantics": semantics}
+
+
+def _zero_stale_live_payload(payload):
+    payload["live_values_zeroed"] = True
+
+    for key in STALE_DYNAMIC_DEVICE_FIELDS:
+        if key in payload["device"]:
+            payload["device"][key] = None
+
+    payload["health"].update(
+        {
+            "fault_active": False,
+            "ac_input_available": False,
+            "ac_output_on": False,
+            "mppt_active": False,
+            "solar_charging_on": False,
+            "ac_charging_on": False,
+            "solar_feed_to_grid_enabled": False,
+            "active_warning_bits": [],
+            "warning_bitmap": None,
+            "flag_blob": None,
+        }
+    )
+
+    for key in STALE_ZERO_LIVE_METRICS:
+        metric = payload["live"].get(key)
+        if isinstance(metric, dict):
+            metric["value"] = 0
+            metric["semantics"] = STALE_ZERO_SEMANTICS
+
+    for key in STALE_LIVE_TEXT_FIELDS:
+        if key in payload["live"]:
+            payload["live"][key] = None
+
+    return payload
 
 
 def _configured_local_tz():
@@ -952,6 +1040,10 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
             "tempo_display": pricing["display"],
         },
     }
+    if stale:
+        _zero_stale_live_payload(payload)
+    else:
+        payload["live_values_zeroed"] = False
     if include_capabilities:
         payload["capabilities"] = current["capabilities"]
     return payload

@@ -717,6 +717,15 @@ def test_overview_payload_marks_stale_snapshots(tmp_path, monkeypatch):
 
     assert payload["state"] == "ok"
     assert payload["current_data_stale"] is True
+    assert payload["live_values_zeroed"] is True
+    assert payload["live"]["ac_output_active_power_w"]["value"] == 0
+    assert payload["live"]["ac_output_active_power_w"]["semantics"] == "stale_zero"
+    assert payload["live"]["pv_power_w"]["value"] == 0
+    assert payload["live"]["battery_state_of_charge_percent"]["value"] == 0
+    assert payload["live"]["battery_discharge_current_a"]["value"] == 0
+    assert payload["health"]["ac_output_on"] is False
+    assert payload["health"]["ac_input_available"] is False
+    assert payload["device"]["operation_mode"] is None
     assert payload["cumulative"]["all_time"]["pv_energy_kwh"] > 0.0
 
 
