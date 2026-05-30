@@ -729,6 +729,45 @@ def test_overview_payload_marks_stale_snapshots(tmp_path, monkeypatch):
     assert payload["cumulative"]["all_time"]["pv_energy_kwh"] > 0.0
 
 
+def test_current_period_is_available_with_zero_totals_when_live_data_is_stale(
+    tmp_path,
+    monkeypatch,
+):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "current_period_stale.sqlite"))
+    ensure_schema(db)
+
+    for recorded_at in ("2000-01-01T10:00:00+00:00", "2000-01-01T10:01:00+00:00"):
+        record_snapshot(
+            db,
+            _sample(recorded_at, 500.0, 250.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+        )
+
+    monkeypatch.setattr(
+        server,
+        "_now_local",
+        lambda: datetime(2000, 1, 2, 12, 0, tzinfo=timezone.utc),
+    )
+
+    date_bounds = server._date_bounds_payload(db)
+    assert date_bounds["available_days"]["max"] == "2000-01-02"
+    assert "2000-01-02" in date_bounds["available_days"]["values"]
+
+    payload = server._period_history_payload(db, "day", "2000-01-02")
+
+    assert payload["state"] == "ok"
+    assert payload["history_values_zeroed"] is True
+    assert payload["produced_kwh"] == 0.0
+    assert payload["consumed_total_kwh"] == 0.0
+    assert payload["earned_total"] == 0.0
+    assert payload["data_complete"] is False
+    assert payload["high_res"] == ""
+
+
 def test_overview_payload_exposes_dashboard_staleness_and_metric_semantics(tmp_path, monkeypatch):
     _configure_server_globals()
     db = Database(str(tmp_path / "overview_semantics.sqlite"))

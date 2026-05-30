@@ -1331,10 +1331,44 @@ def _history_payload_from_totals(totals, pricing=None):
     }
 
 
+def _zero_history_totals():
+    return {
+        "interval_count": 0,
+        "produced": 0.0,
+        "consumed": 0.0,
+        "fed_in": 0.0,
+        "battery_charge": 0.0,
+        "battery_discharge": 0.0,
+        "pv_to_load": 0.0,
+        "pv_to_battery": 0.0,
+        "battery_to_load": 0.0,
+        "grid_to_load": 0.0,
+        "grid_to_battery": 0.0,
+        "earned_feed_in_eur": 0.0,
+        "earned_savings_eur": 0.0,
+    }
+
+
+def _zero_current_period_payload(db, table, search_date):
+    if not _period_includes_present(table, search_date):
+        return None
+
+    current = get_current_snapshot(db, include_capabilities=False)
+    if not current or not _snapshot_is_stale(current.get("recorded_at")):
+        return None
+
+    pricing = _pricing_context(db=db, current=current)
+    return {
+        **_history_payload_from_totals(_zero_history_totals(), pricing=pricing),
+        **_period_completeness(db, table, search_date),
+        "history_values_zeroed": True,
+    }
+
+
 def _history_payload_from_derived(db, table, search_date):
     totals = _query_energy_totals(db, table, search_date)
     if not totals or totals["interval_count"] <= 0:
-        return None
+        return _zero_current_period_payload(db, table, search_date)
     current = get_current_snapshot(db, include_capabilities=False)
     pricing = _pricing_context(db=db, current=current)
     if _period_includes_present(table, search_date):
@@ -1438,6 +1472,32 @@ def _year_availability_payload(year_values):
     }
 
 
+def _include_current_period_for_stale_live_data(
+    db,
+    day_values,
+    month_values,
+    year_values,
+):
+    current = get_current_snapshot(
+        db,
+        include_cumulative=False,
+        include_capabilities=False,
+    )
+    if not current or not _snapshot_is_stale(current.get("recorded_at")):
+        return day_values, month_values, year_values
+
+    now = _now_local()
+    recorded_at = datetime.fromisoformat(current["recorded_at"]).astimezone(now.tzinfo)
+    if (now - recorded_at) > timedelta(days=2):
+        return day_values, month_values, year_values
+
+    return (
+        sorted({*day_values, now.strftime("%Y-%m-%d")}),
+        sorted({*month_values, now.strftime("%Y-%m")}),
+        sorted({*year_values, now.year}),
+    )
+
+
 def _date_bounds_payload(db):
     configured_year = _configured_start_date().year
     current_year = _now_local().year
@@ -1458,6 +1518,13 @@ def _date_bounds_payload(db):
         year_values = sorted({int(month_value[:4]) for month_value in month_values})
     if not year_values and day_values:
         year_values = sorted({int(day_value[:4]) for day_value in day_values})
+
+    day_values, month_values, year_values = _include_current_period_for_stale_live_data(
+        db,
+        day_values,
+        month_values,
+        year_values,
+    )
 
     year_min = min(year_values) if year_values else configured_year
     year_max = max(year_values) if year_values else current_year
