@@ -31,6 +31,9 @@ DEFAULT_CONFIG = {
         "public_host": "localhost",
         "public_url": "http://localhost:5000",
     },
+    "diagnostics": {
+        "enabled": False,
+    },
     "grabber": {
         "interval_s": 2,
         "max_gap_for_cumulative_s": 180,

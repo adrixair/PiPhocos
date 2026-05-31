@@ -87,10 +87,18 @@ export PIPHOCOS_SERIAL_PORT=/dev/serial/by-id/your-adapter
 docker compose up --build -d piphocos
 ```
 
+By default, Docker publishes the dashboard on localhost only. To expose it on a trusted LAN, opt in explicitly:
+```bash
+export PIPHOCOS_HTTP_BIND=0.0.0.0
+docker compose up --build -d piphocos
+```
+
 ### 4. Access the Dashboard
 Open your favorite browser and head to:
-- `http://localhost:5000`
-- `http://<your-raspberry-pi-ip>:5000`
+- `http://localhost:5000` by default
+- `http://<your-raspberry-pi-ip>:5000` only when `PIPHOCOS_HTTP_BIND=0.0.0.0`
+
+Security note: PiPhocos has no built-in authentication. Keep it on localhost or a trusted LAN, do not expose it directly to the public Internet, and leave diagnostics disabled unless you need them temporarily.
 
 ---
 

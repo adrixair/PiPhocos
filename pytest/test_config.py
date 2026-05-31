@@ -10,5 +10,6 @@ def test_template_config_is_readable():
     assert cfg.config_data["device"]["type"] == "Phocos"
     assert cfg.config_data["phocos"]["unit"] == 0
     assert cfg.config_data["server"]["public_host"] == "localhost"
+    assert cfg.config_data["diagnostics"]["enabled"] is False
     assert cfg.config_data["tempo"]["enabled"] is True
     assert cfg.config_data["instance"]["name"] == "PiPhocos"

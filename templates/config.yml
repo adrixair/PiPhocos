@@ -45,6 +45,10 @@ server:
   public_host: localhost
   public_url: http://localhost:5000
 
+# Disabled by default because this endpoint exposes raw inverter metadata.
+diagnostics:
+  enabled: false
+
 # Data grabber configuration. Do not modify!
 grabber:
   interval_s: 2

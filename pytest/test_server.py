@@ -89,6 +89,7 @@ def _configure_server_globals():
             },
             "instance": {"name": "Test"},
             "server": {"public_url": "http://localhost"},
+            "diagnostics": {"enabled": False},
             "device": {"start_date": date(2026, 4, 4)},
         }
     )
@@ -140,6 +141,59 @@ def test_overview_payload_compact_omits_heavy_sections(tmp_path):
     assert "today_coverage_percent" not in compact
     assert full["cumulative"]["today"]["pv_energy_kwh"] >= 0.0
     assert "capabilities" in full
+
+
+def test_diagnostics_endpoint_is_disabled_by_default():
+    _configure_server_globals()
+
+    response = server.app.test_client().get("/api/diagnostics")
+
+    assert response.status_code == 404
+    assert response.get_json()["state"] == "disabled"
+
+
+def test_diagnostics_endpoint_can_be_enabled(tmp_path, monkeypatch):
+    _configure_server_globals()
+    server.config.config_data["diagnostics"]["enabled"] = True
+    db = Database(str(tmp_path / "diagnostics.sqlite"))
+    ensure_schema(db)
+    recorded_at = "2026-04-05T12:00:00+00:00"
+    record_snapshot(
+        db,
+        _sample(recorded_at, 800.0, 400.0, export_w=50.0),
+        {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+        pricing=_pricing(),
+    )
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get("/api/diagnostics")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["state"] == "ok"
+    assert payload["device"]["serial_number"] == "TEST-SERIAL-0001"
+    assert "raw_snapshot" in payload
+
+
+def test_csv_filename_sanitizes_query_parameters(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "csv_filename.sqlite"))
+    ensure_schema(db)
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get(
+        "/api/csv?bucket=day&prefix=2026%0d%0aX-Evil:%201"
+    )
+
+    assert response.status_code == 200
+    assert "X-Evil" not in response.headers
+    assert (
+        response.headers["Content-Disposition"]
+        == "attachment; filename=phocos_day_2026__X-Evil__1.csv"
+    )
 
 
 def test_period_payload_keeps_battery_charge_out_of_direct_pv_consumption(tmp_path):

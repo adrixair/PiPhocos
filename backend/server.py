@@ -311,6 +311,16 @@ def _instance_name():
     return instance.get("name") or "PiPhocos"
 
 
+def _diagnostics_enabled():
+    if config is None:
+        return False
+
+    diagnostics = (config.config_data or {}).get("diagnostics", {})
+    if not isinstance(diagnostics, dict):
+        return False
+    return bool(diagnostics.get("enabled", False))
+
+
 def _history_sample_bounds(db, *, since_iso=None, local_day=None, table="history_samples"):
     filters = []
     params = []
@@ -1863,6 +1873,15 @@ def _grouped_energy_csv_rows(db, bucket_key, search_prefix):
     ]
 
 
+def _safe_csv_filename_part(value, fallback):
+    text = str(value or fallback)
+    cleaned = "".join(
+        char if char.isalnum() or char in {"-", "_", "."} else "_"
+        for char in text
+    ).strip("._")
+    return (cleaned or fallback)[:64]
+
+
 @app.route("/")
 def get_index():
     response = send_from_directory(str(SITE_DIR), "index.html")
@@ -1989,6 +2008,9 @@ def api_cumulative():
 
 @app.route("/api/diagnostics", methods=["GET"])
 def api_diagnostics():
+    if not _diagnostics_enabled():
+        return jsonify({"state": "disabled"}), 404
+
     db = _open_db()
     current = get_current_snapshot(db)
     if not current:
@@ -2050,9 +2072,11 @@ def api_csv():
                 ]
             )
         scope = prefix or "all"
+        filename_bucket = _safe_csv_filename_part(bucket, "data")
+        filename_scope = _safe_csv_filename_part(scope, "all")
         response = make_response(handle.getvalue())
         response.headers["Content-Disposition"] = (
-            f"attachment; filename=phocos_{bucket}_{scope}.csv"
+            f"attachment; filename=phocos_{filename_bucket}_{filename_scope}.csv"
         )
         response.mimetype = "text/csv"
         return response
