@@ -68,17 +68,17 @@ export PIPHOCOS_SERIAL_PORT=/dev/serial/by-id/your-adapter
 docker compose up --build -d piphocos
 ```
 
-Docker publishes the dashboard on localhost by default. If another device on your trusted LAN needs to open it, opt in explicitly:
+Docker publishes the dashboard on localhost by default. If another device on your trusted LAN needs to open it, bind the service to a specific LAN address:
 ```bash
-export PIPHOCOS_HTTP_BIND=0.0.0.0
+export PIPHOCOS_HTTP_BIND=<your-nas-lan-ip>
 docker compose up --build -d piphocos
 ```
 
-PiPhocos does not include built-in authentication. Do not expose port 5000 directly to the public Internet.
+PiPhocos does not include built-in authentication. Do not expose port 5000 directly to the public Internet. Use a private VPN or an authenticated reverse proxy for remote access.
 
 ## 4. Open the dashboard
 
-Open `http://localhost:5000` by default on the NAS host, or `http://<nas-ip>:5000` after setting `PIPHOCOS_HTTP_BIND=0.0.0.0`.
+Open `http://localhost:5000` by default on the NAS host, or `http://<nas-ip>:5000` after setting `PIPHOCOS_HTTP_BIND` to that LAN address.
 
 ## Notes
 

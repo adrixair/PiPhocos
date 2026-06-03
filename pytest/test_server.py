@@ -196,6 +196,21 @@ def test_csv_filename_sanitizes_query_parameters(tmp_path, monkeypatch):
     )
 
 
+def test_numeric_query_parameters_reject_invalid_values():
+    _configure_server_globals()
+    client = server.app.test_client()
+
+    for path in (
+        "/api/chart/live?hours=not-a-number",
+        "/api/history?max_points=not-a-number",
+        "/api/cumulative?limit=not-a-number",
+    ):
+        response = client.get(path)
+        payload = response.get_json()
+        assert response.status_code == 400
+        assert payload["state"] == "error"
+
+
 def test_period_payload_keeps_battery_charge_out_of_direct_pv_consumption(tmp_path):
     _configure_server_globals()
     db = Database(str(tmp_path / "history.sqlite"))

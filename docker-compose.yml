@@ -12,17 +12,3 @@ services:
       - ./data:/data
     devices:
       - ${PIPHOCOS_SERIAL_PORT:-/dev/ttyUSB0}:${PIPHOCOS_SERIAL_PORT:-/dev/ttyUSB0}
-
-  piphocos-ui-dev:
-    container_name: piphocos-ui-dev
-    image: python:3.12.4-slim-bookworm
-    profiles:
-      - ui-dev
-    working_dir: /app
-    command: python /app/local_testing/ui_mock_server.py --port 4173 --directory /app/site
-    restart: unless-stopped
-    ports:
-      - "4173:4173"
-    volumes:
-      - ./site:/app/site
-      - ./local_testing:/app/local_testing

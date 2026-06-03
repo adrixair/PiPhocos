@@ -30,14 +30,6 @@ async function triggerFileDownload(url, fallbackName) {
 
 // Downloads a .csv file from the server
 async function downloadCsv() {
-    if (window.__PIPHOCOS_MOCK__?.enabled) {
-        const mockCsvUrl = window.__PIPHOCOS_MOCK__.csvUrl
-            || new URL("mock/ui-snapshot.sample.csv", window.location.href).href;
-        console.log("Downloading mock CSV: " + mockCsvUrl);
-        await triggerFileDownload(mockCsvUrl, "ui-snapshot.sample.csv");
-        return;
-    }
-
     // Get the aggregation bucket
     let bucket = "day";
     if (document.getElementById("csv_res_rad_month").checked == true)
@@ -67,7 +59,6 @@ async function downloadCsv() {
     if (prefix.length > 0)
         url += "&prefix=" + prefix;
 
-    console.log("Executing CSV query: " + url);
     const scope = prefix.length > 0 ? prefix : "all";
     const fallbackName = "phocos_" + bucket + "_" + scope + ".csv";
     try {

@@ -54,8 +54,6 @@ const dashboardTableConfigs = {
         { kind: "metric", key: "inverter_temperature_c", labelId: "metric_inverter_temperature", icon: "fas fa-temperature-half", digits: 1, source: "QPIGS" },
     ],
     device: [
-        { kind: "text", path: ["device", "serial_number"], labelId: "metric_serial_number", icon: "fas fa-hashtag", sourceKind: "reported", source: "QID" },
-        { kind: "text", path: ["device", "protocol_id"], labelId: "metric_protocol_id", icon: "fas fa-code", sourceKind: "reported", source: "QPI" },
         { kind: "text", path: ["device", "operation_mode"], labelId: "metric_operation_mode", icon: "fas fa-gear", sourceKind: "decoded", source: "QMOD" },
         { kind: "text", path: ["device", "ac_output_mode"], labelId: "metric_ac_output_mode", icon: "fas fa-diagram-project", sourceKind: "decoded", source: "QPGS0 / QPIRI" },
         { kind: "text", path: ["device", "output_source_priority"], labelId: "metric_output_priority", icon: "fas fa-shuffle", sourceKind: "decoded", source: "QPIRI" },
@@ -1001,7 +999,7 @@ function updateCurrentStats() {
             subtitleText += " | Tempo: " + tempoDisplay;
         if (stats["current_data_stale"] === true)
             subtitleText += " | " + getGenericString("dashboard_stale_note");
-        document.getElementById("dashboard_subtitle_time").innerHTML = subtitleText;
+        document.getElementById("dashboard_subtitle_time").textContent = subtitleText;
 
         renderDashboardTable("dash_current_table", dashboardTableConfigs.current, stats);
         renderDashboardTable("dash_battery_table", dashboardTableConfigs.battery, stats);
@@ -1879,22 +1877,22 @@ function updateStatistics() {
             if (stats["state"] != "ok")
                 throw new Error("Statistics are unavailable");
 
-            document.getElementById("stats_highest_prod_value").innerHTML = numFormat(stats["highest_production_w"], 0) + " W";
-            document.getElementById("stats_highest_prod_date").innerHTML = prettyPrintDateString(stats["highest_production_date"]);
+            document.getElementById("stats_highest_prod_value").textContent = numFormat(stats["highest_production_w"], 0) + " W";
+            document.getElementById("stats_highest_prod_date").textContent = prettyPrintDateString(stats["highest_production_date"]);
 
-            document.getElementById("stats_best_day_value").innerHTML = numFormat(stats["best_day_production_kwh"], 2) + " kWh";
-            document.getElementById("stats_best_day_date").innerHTML = prettyPrintDateString(stats["best_day_date"]);
+            document.getElementById("stats_best_day_value").textContent = numFormat(stats["best_day_production_kwh"], 2) + " kWh";
+            document.getElementById("stats_best_day_date").textContent = prettyPrintDateString(stats["best_day_date"]);
 
-            document.getElementById("stats_best_month_value").innerHTML = numFormat(stats["best_month_production_kwh"], 2) + " kWh";
-            document.getElementById("stats_best_month_date").innerHTML = prettyPrintDateStringWithoutDay(stats["best_month_date"]);
+            document.getElementById("stats_best_month_value").textContent = numFormat(stats["best_month_production_kwh"], 2) + " kWh";
+            document.getElementById("stats_best_month_date").textContent = prettyPrintDateStringWithoutDay(stats["best_month_date"]);
 
-            document.getElementById("stats_best_year_value").innerHTML = numFormat(stats["best_year_production_kwh"], 2) + " kWh";
-            document.getElementById("stats_best_year_date").innerHTML = getStatsBestYearPrefix() + stats["best_year_date"];
+            document.getElementById("stats_best_year_value").textContent = numFormat(stats["best_year_production_kwh"], 2) + " kWh";
+            document.getElementById("stats_best_year_date").textContent = getStatsBestYearPrefix() + stats["best_year_date"];
 
-            document.getElementById("statistics_value_avg_daily_prod").innerHTML = numFormat(stats["average_daily_production_kwh"], 2);
+            document.getElementById("statistics_value_avg_daily_prod").textContent = numFormat(stats["average_daily_production_kwh"], 2);
 
-            document.getElementById("statistics_value_start_date").innerHTML = prettyPrintDateString(stats["start_of_operation"]);
-            document.getElementById("statistics_value_runtime").innerHTML = stats["days_of_operation"] + " " + getUnitDays();
+            document.getElementById("statistics_value_start_date").textContent = prettyPrintDateString(stats["start_of_operation"]);
+            document.getElementById("statistics_value_runtime").textContent = stats["days_of_operation"] + " " + getUnitDays();
 
             gStatisticsHasLoadedOnce = true;
             setViewStatus("statistics_status", null, "");

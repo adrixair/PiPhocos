@@ -1,6 +1,6 @@
 # Raspberry Pi setup
 
-This is the only documented deployment path for now.
+This is the primary deployment path for now.
 
 ## Before you start
 
@@ -55,20 +55,20 @@ docker compose up --build -d piphocos
 
 If your adapter is simply `/dev/ttyUSB0`, use that instead.
 
-Docker publishes the dashboard on localhost by default. If another device on your trusted LAN needs to open it, opt in explicitly:
+Docker publishes the dashboard on localhost by default. If another device on your trusted LAN needs to open it, bind the service to a specific LAN address:
 ```bash
-export PIPHOCOS_HTTP_BIND=0.0.0.0
+export PIPHOCOS_HTTP_BIND=<your-raspberry-pi-lan-ip>
 docker compose up --build -d piphocos
 ```
 
-PiPhocos does not include built-in authentication. Do not expose port 5000 directly to the public Internet.
+PiPhocos does not include built-in authentication. Do not expose port 5000 directly to the public Internet. Use a private VPN or an authenticated reverse proxy for remote access.
 
 ## 5. Open the dashboard
 
 Open one of these addresses:
 
 - `http://localhost:5000` on the Raspberry Pi itself
-- `http://<your-raspberry-pi-ip>:5000` from another device on the same network after setting `PIPHOCOS_HTTP_BIND=0.0.0.0`
+- `http://<your-raspberry-pi-ip>:5000` from another device on the same network after setting `PIPHOCOS_HTTP_BIND` to that LAN address
 
 ## If it does not work
 

@@ -4,15 +4,9 @@
 
 **High-performance, local-first dashboard & monitor for Phocos Any-Grid on Raspberry Pi.**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/adrixair/PiPhocos)
 [![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-Ready-C51A4A?style=for-the-badge&logo=raspberry-pi&logoColor=white)](https://www.raspberrypi.org/)
-[![PWA](https://img.shields.io/badge/PWA-Desktop_&_Mobile-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](#)
 [![A11y](https://img.shields.io/badge/Accessibility-WCAG_2.1_AA-4CAF50?style=for-the-badge&logo=w3c&logoColor=white)](https://www.w3.org/WAI/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-
-<br>
-
-<img src="doc/phocos-dashboard.jpg" alt="PiPhocos dashboard overview" width="90%">
 
 <br>
 
@@ -30,25 +24,6 @@ Live telemetry, battery status, energy history, and CSV export in one lightning-
 - **⬇️ CSV Exports:** Easily export your data for external analysis.
 - **🏠 Local First:** No reliance on cloud services. Your data stays entirely on your machine.
 - **♿ Fully Accessible:** Built with accessibility (a11y) in mind, adhering to modern standards for an inclusive UI.
-
----
-
-## 📸 Screenshots
-
-<div align="center">
-  <table style="border-collapse: collapse; border: none;">
-    <tr style="border: none;">
-      <td width="50%" align="center" style="border: none;">
-        <img src="doc/phocos-chart.jpg" alt="PiPhocos live chart view" width="100%">
-        <br><i>Live Chart telemetry</i>
-      </td>
-      <td width="50%" align="center" style="border: none;">
-        <img src="doc/phocos-daily.jpg" alt="PiPhocos daily data view" width="100%">
-        <br><i>Daily data breakdown</i>
-      </td>
-    </tr>
-  </table>
-</div>
 
 ---
 
@@ -87,18 +62,18 @@ export PIPHOCOS_SERIAL_PORT=/dev/serial/by-id/your-adapter
 docker compose up --build -d piphocos
 ```
 
-By default, Docker publishes the dashboard on localhost only. To expose it on a trusted LAN, opt in explicitly:
+By default, Docker publishes the dashboard on localhost only. To expose it on a trusted LAN, bind it to a specific LAN address:
 ```bash
-export PIPHOCOS_HTTP_BIND=0.0.0.0
+export PIPHOCOS_HTTP_BIND=<your-raspberry-pi-lan-ip>
 docker compose up --build -d piphocos
 ```
 
 ### 4. Access the Dashboard
 Open your favorite browser and head to:
 - `http://localhost:5000` by default
-- `http://<your-raspberry-pi-ip>:5000` only when `PIPHOCOS_HTTP_BIND=0.0.0.0`
+- `http://<your-raspberry-pi-ip>:5000` only when `PIPHOCOS_HTTP_BIND` is set to that LAN address
 
-Security note: PiPhocos has no built-in authentication. Keep it on localhost or a trusted LAN, do not expose it directly to the public Internet, and leave diagnostics disabled unless you need them temporarily.
+Security note: PiPhocos has no built-in authentication. Keep it on localhost, a trusted LAN address, or behind a private VPN/reverse proxy with authentication. Do not expose it directly to the public Internet. Leave `diagnostics.enabled` set to `false` in `data/config.yml` unless you need it temporarily.
 
 ---
 
@@ -113,8 +88,9 @@ This project is specifically tailored for **Off-Grid Solar** architectures using
 ## 📚 Included Resources
 
 - **Raspberry Pi setup guide:** [`doc/install_raspberrypi.md`](doc/install_raspberrypi.md)
+- **Synology NAS setup guide:** [`doc/install_synology.md`](doc/install_synology.md)
 - **Config template:** [`templates/config.yml`](templates/config.yml)
-- **Communication Protocol API:** [`Any-Grid_PSW-H_RS-232_Query_Protocol_2019-02-21.pdf`](Any-Grid_PSW-H_RS-232_Query_Protocol_2019-02-21.pdf)
+- **Protocol reference:** use the official Phocos protocol documentation for your inverter model.
 
 ---
 
@@ -125,5 +101,5 @@ This project was originally a fork of the **Sunalyzer** project by **Boris Brock
 ---
 
 <div align="center">
-  <b>Maintained by Adrien Lejeune</b> &middot; Released under the <a href="LICENSE">MIT License</a>
+  Released under the <a href="LICENSE">MIT License</a>
 </div>

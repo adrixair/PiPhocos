@@ -137,9 +137,6 @@ Thumbs.db
 *.bak
 data
 grabber/devices/__pycache__
-local_testing/test_data
-site/mock/ui-snapshot.json
-site/mock/ui-snapshot.csv
 test-results/
 *.sqlite
 *.sqlite-*

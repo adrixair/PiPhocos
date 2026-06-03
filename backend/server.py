@@ -896,9 +896,6 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
         "current_data_stale": stale,
         "live_state": "offline" if stale else "live",
         "device": {
-            "serial_number": snapshot.get("serial_number"),
-            "device_id": snapshot.get("device_id"),
-            "protocol_id": snapshot.get("protocol_id"),
             "other_units_connected": snapshot.get("other_units_connected"),
             "other_units_connected_code": snapshot.get("other_units_connected_code"),
             "operation_mode": snapshot.get("operation_mode"),
@@ -1882,6 +1879,21 @@ def _safe_csv_filename_part(value, fallback):
     return (cleaned or fallback)[:64]
 
 
+def _bounded_query_int(name, default, *, min_value=1, max_value=None):
+    raw_value = request.args.get(name)
+    if raw_value in {None, ""}:
+        return default
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid integer for {name}") from None
+
+    value = max(value, min_value)
+    if max_value is not None:
+        value = min(value, max_value)
+    return value
+
+
 @app.route("/")
 def get_index():
     response = send_from_directory(str(SITE_DIR), "index.html")
@@ -1953,7 +1965,10 @@ def api_statistics():
 
 @app.route("/api/chart/live", methods=["GET"])
 def api_chart_live():
-    hours = int(request.args.get("hours", "24"))
+    try:
+        hours = _bounded_query_int("hours", 24, min_value=1, max_value=168)
+    except ValueError as exc:
+        return jsonify({"state": "error", "message": str(exc)}), 400
     payload = _live_chart_payload(_open_db(), hours)
     return jsonify(payload), (404 if payload["state"] == "nodata" else 200)
 
@@ -1983,11 +1998,16 @@ def api_breakdown():
 @app.route("/api/history", methods=["GET"])
 def api_history():
     metric = request.args.get("metric", "ac_output_active_power_w")
-    hours = int(request.args.get("hours", "24"))
-    max_points_arg = request.args.get("max_points")
-    max_points = _graph_max_points()
-    if max_points_arg is not None:
-        max_points = None if max_points_arg == "0" else max(int(max_points_arg), 1)
+    try:
+        hours = _bounded_query_int("hours", 24, min_value=1, max_value=168)
+        max_points = _bounded_query_int(
+            "max_points",
+            _graph_max_points(),
+            min_value=1,
+            max_value=1000,
+        )
+    except ValueError as exc:
+        return jsonify({"state": "error", "message": str(exc)}), 400
     try:
         data = get_history_series(_open_db(), metric, hours, max_points=max_points)
     except KeyError:
@@ -1998,7 +2018,10 @@ def api_history():
 @app.route("/api/cumulative", methods=["GET"])
 def api_cumulative():
     bucket = request.args.get("bucket", "day")
-    limit = int(request.args.get("limit", "30"))
+    try:
+        limit = _bounded_query_int("limit", 30, min_value=1, max_value=3650)
+    except ValueError as exc:
+        return jsonify({"state": "error", "message": str(exc)}), 400
     try:
         data = get_grouped_cumulative(_open_db(), bucket, limit)
     except ValueError as exc:
