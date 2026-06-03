@@ -10,6 +10,10 @@
 
 <br>
 
+<img src="doc/phocos-dashboard.webp" alt="PiPhocos dashboard overview" width="90%">
+
+<br>
+
 Live telemetry, battery status, energy history, and CSV export in one lightning-fast local web app. Designed as a Progressive Web App (PWA) compatible with both desktop and mobile devices.
 
 </div>
@@ -24,6 +28,25 @@ Live telemetry, battery status, energy history, and CSV export in one lightning-
 - **⬇️ CSV Exports:** Easily export your data for external analysis.
 - **🏠 Local First:** No reliance on cloud services. Your data stays entirely on your machine.
 - **♿ Fully Accessible:** Built with accessibility (a11y) in mind, adhering to modern standards for an inclusive UI.
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+  <table style="border-collapse: collapse; border: none;">
+    <tr style="border: none;">
+      <td width="50%" align="center" style="border: none;">
+        <img src="doc/phocos-chart.webp" alt="PiPhocos live chart view" width="100%">
+        <br><i>Live Chart telemetry</i>
+      </td>
+      <td width="50%" align="center" style="border: none;">
+        <img src="doc/phocos-daily.webp" alt="PiPhocos daily data view" width="100%">
+        <br><i>Daily data breakdown</i>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
