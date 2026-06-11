@@ -86,6 +86,26 @@ STALE_ZERO_LIVE_METRICS = {
     "grid_to_house_power_w",
     "grid_to_battery_power_w",
 }
+QPIRI_LIVE_SETTING_METRICS = {
+    "grid_rating_voltage_v": ("V", "exact"),
+    "grid_rating_current_a": ("A", "exact"),
+    "ac_output_rating_voltage_v": ("V", "exact"),
+    "ac_output_rating_frequency_hz": ("Hz", "exact"),
+    "ac_output_rating_current_a": ("A", "exact"),
+    "ac_output_rating_apparent_power_va": ("VA", "exact"),
+    "ac_output_rating_active_power_w": ("W", "exact"),
+    "battery_rating_voltage_v": ("V", "exact"),
+    "battery_recharge_voltage_v": ("V", "exact"),
+    "battery_under_voltage_v": ("V", "exact"),
+    "battery_bulk_voltage_v": ("V", "exact"),
+    "battery_float_voltage_v": ("V", "exact"),
+    "battery_redischarge_voltage_v": ("V", "exact"),
+    "battery_redischarge_voltage_from_scc_v": ("V", "exact"),
+    "max_ac_charging_current_a": ("A", "exact"),
+    "max_charging_current_a": ("A", "exact"),
+    "max_parallel_units": ("", "exact"),
+    "cv_charge_time_minutes": ("min", "exact"),
+}
 STALE_DYNAMIC_DEVICE_FIELDS = {
     "other_units_connected",
     "other_units_connected_code",
@@ -887,6 +907,11 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
     qpiri = snapshot.get("qpiri") or {}
     live_flow = _current_live_breakdown(snapshot)
     stale = _snapshot_is_stale(current["recorded_at"])
+    settings = {
+        key: value
+        for key, value in qpiri.items()
+        if key not in {"command", "payload_fields"}
+    }
 
     payload = {
         "state": "ok",
@@ -898,6 +923,9 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
         "device": {
             "other_units_connected": snapshot.get("other_units_connected"),
             "other_units_connected_code": snapshot.get("other_units_connected_code"),
+            "serial_number": snapshot.get("serial_number"),
+            "protocol_id": snapshot.get("protocol_id"),
+            "device_id": snapshot.get("device_id"),
             "operation_mode": snapshot.get("operation_mode"),
             "operation_mode_code": snapshot.get("operation_mode_code"),
             "fault": snapshot.get("fault"),
@@ -905,9 +933,16 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
             "ac_output_mode": snapshot.get("ac_output_mode"),
             "country_code": snapshot.get("country_code"),
             "output_source_priority": qpiri.get("output_source_priority"),
-            "battery_charger_source_priority": snapshot.get(
+            "battery_charger_source_priority": qpiri.get("charger_source_priority")
+            or snapshot.get(
                 "battery_charger_source_priority"
             ),
+            "battery_type": qpiri.get("battery_type"),
+            "input_voltage_range": qpiri.get("input_voltage_range"),
+            "pv_ok_condition": qpiri.get("pv_ok_condition"),
+            "pv_power_balance": qpiri.get("pv_power_balance"),
+            "machine_type": qpiri.get("machine_type"),
+            "topology": qpiri.get("topology"),
         },
         "health": {
             "fault_active": snapshot.get("fault_code") not in {None, "00"},
@@ -1032,7 +1067,8 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
             "battery_state": snapshot.get("battery_state")
             or inverter_status.get("battery_state"),
             "output_source_priority": qpiri.get("output_source_priority"),
-            "battery_charger_source_priority": snapshot.get(
+            "battery_charger_source_priority": qpiri.get("charger_source_priority")
+            or snapshot.get(
                 "battery_charger_source_priority"
             ),
             "status_bits": inverter_status.get("raw"),
@@ -1047,7 +1083,14 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
             "tempo_tomorrow_color": pricing["tomorrow_color_label"],
             "tempo_display": pricing["display"],
         },
+        "settings": settings,
     }
+    payload["live"].update(
+        {
+            key: _metric(qpiri.get(key), unit, semantics)
+            for key, (unit, semantics) in QPIRI_LIVE_SETTING_METRICS.items()
+        }
+    )
     if stale:
         _zero_stale_live_payload(payload)
     else:

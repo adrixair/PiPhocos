@@ -31,6 +31,11 @@ const dashboardTableConfigs = {
         { kind: "metric", key: "ac_output_active_power_w", labelId: "metric_ac_output_active_power", icon: "fas fa-house", digits: 0, source: "QPGS0 / QPIGS" },
         { kind: "metric", key: "ac_output_apparent_power_va", labelId: "metric_ac_output_apparent_power", icon: "fas fa-gauge-high", digits: 0, source: "QPGS0 / QPIGS" },
         { kind: "metric", key: "ac_output_load_percent", labelId: "metric_ac_output_load", icon: "fas fa-chart-column", digits: 0, source: "QPGS0 / QPIGS" },
+        { kind: "metric", key: "total_output_active_power_w", labelId: "metric_total_output_active_power", icon: "fas fa-layer-group", digits: 0, source: "QPGS0" },
+        { kind: "metric", key: "total_ac_output_apparent_power_va", labelId: "metric_total_output_apparent_power", icon: "fas fa-gauge", digits: 0, source: "QPGS0" },
+        { kind: "metric", key: "solar_to_house_power_w", labelId: "metric_solar_to_house", icon: "fas fa-house-signal", digits: 0, source: "derived" },
+        { kind: "metric", key: "battery_to_house_power_w", labelId: "metric_battery_to_house", icon: "fas fa-battery-three-quarters", digits: 0, source: "derived" },
+        { kind: "metric", key: "grid_to_house_power_w", labelId: "metric_grid_to_house", icon: "fas fa-plug-circle-bolt", digits: 0, source: "derived" },
     ],
     battery: [
         { kind: "metric", key: "battery_state_of_charge_percent", labelId: "metric_battery_soc", icon: "fas fa-battery-half", digits: 0, source: "QPGS0 / QPIGS" },
@@ -39,14 +44,18 @@ const dashboardTableConfigs = {
         { kind: "metric", key: "battery_voltage_from_scc_v", labelId: "metric_battery_voltage_scc", icon: "fas fa-solar-panel", digits: 2, source: "QPIGS" },
         { kind: "metric", key: "battery_charge_current_a", labelId: "metric_battery_charge_current", icon: "fas fa-arrow-up", digits: 2, source: "QPGS0 / QPIGS" },
         { kind: "metric", key: "battery_discharge_current_a", labelId: "metric_battery_discharge_current", icon: "fas fa-arrow-down", digits: 2, source: "QPGS0 / QPIGS" },
+        { kind: "metric", key: "battery_charge_power_w", labelId: "metric_battery_charge_power", icon: "fas fa-arrow-up-wide-short", digits: 0, source: "derived" },
+        { kind: "metric", key: "battery_discharge_power_w", labelId: "metric_battery_discharge_power", icon: "fas fa-arrow-down-wide-short", digits: 0, source: "derived" },
         { kind: "metric", key: "total_charging_current_a", labelId: "metric_total_charging_current", icon: "fas fa-charging-station", digits: 2, source: "QPGS0 / QPIGS" },
-        { kind: "text", path: ["device", "battery_charger_source_priority"], labelId: "metric_battery_priority", icon: "fas fa-sliders", sourceKind: "decoded", source: "QPIRI / QPGS0" },
     ],
     solar: [
         { kind: "metric", key: "pv_input_voltage_v", labelId: "metric_pv_voltage", icon: "fas fa-solar-panel", digits: 1, source: "QPGS0 / QPIGS" },
         { kind: "metric", key: "pv_input_current_a", labelId: "metric_pv_current", icon: "fas fa-sun", digits: 2, source: "QPGS0 / QPIGS" },
         { kind: "metric", key: "pv_power_w", labelId: "metric_pv_power", icon: "fas fa-solar-panel", digits: 0, source: "QPIGS" },
         { kind: "metric", key: "pv_charging_power_w", labelId: "metric_pv_charging_power", icon: "fas fa-battery-three-quarters", digits: 0, source: "QPIGS" },
+        { kind: "metric", key: "solar_to_battery_power_w", labelId: "metric_solar_to_battery", icon: "fas fa-charging-station", digits: 0, source: "derived" },
+        { kind: "metric", key: "solar_feed_to_grid_power_w", labelId: "metric_solar_feed_to_grid", icon: "fas fa-tower-broadcast", digits: 0, source: "QPIGS" },
+        { kind: "metric", key: "grid_to_battery_power_w", labelId: "metric_grid_to_battery", icon: "fas fa-plug-circle-plus", digits: 0, source: "derived" },
         { kind: "boolean", path: ["health", "mppt_active"], labelId: "metric_mppt_active", icon: "fas fa-sun", sourceKind: "decoded", source: "status bits" },
         { kind: "boolean", path: ["health", "solar_charging_on"], labelId: "metric_solar_charging", icon: "fas fa-solar-panel", sourceKind: "decoded", source: "status bits" },
         { kind: "boolean", path: ["health", "ac_charging_on"], labelId: "metric_ac_charging", icon: "fas fa-plug-circle-bolt", sourceKind: "decoded", source: "status bits" },
@@ -54,14 +63,48 @@ const dashboardTableConfigs = {
         { kind: "metric", key: "inverter_temperature_c", labelId: "metric_inverter_temperature", icon: "fas fa-temperature-half", digits: 1, source: "QPIGS" },
     ],
     device: [
+        { kind: "text", path: ["device", "serial_number"], labelId: "metric_serial_number", icon: "fas fa-barcode", sourceKind: "raw", source: "QPGS0 / QID" },
+        { kind: "text", path: ["device", "protocol_id"], labelId: "metric_protocol_id", icon: "fas fa-code-branch", sourceKind: "raw", source: "QPI" },
+        { kind: "text", path: ["device", "device_id"], labelId: "metric_device_id", icon: "fas fa-fingerprint", sourceKind: "raw", source: "QID" },
         { kind: "text", path: ["device", "operation_mode"], labelId: "metric_operation_mode", icon: "fas fa-gear", sourceKind: "decoded", source: "QMOD" },
-        { kind: "text", path: ["device", "ac_output_mode"], labelId: "metric_ac_output_mode", icon: "fas fa-diagram-project", sourceKind: "decoded", source: "QPGS0 / QPIRI" },
-        { kind: "text", path: ["device", "output_source_priority"], labelId: "metric_output_priority", icon: "fas fa-shuffle", sourceKind: "decoded", source: "QPIRI" },
         { kind: "text", path: ["device", "other_units_connected"], labelId: "metric_other_units", icon: "fas fa-network-wired", sourceKind: "decoded", source: "QPGS0" },
         { kind: "text", path: ["device", "fault"], labelId: "metric_fault", icon: "fas fa-triangle-exclamation", sourceKind: "decoded", source: "QMOD / QPGS0" },
         { kind: "boolean", path: ["health", "ac_input_available"], labelId: "metric_ac_input_available", icon: "fas fa-plug-circle-check", sourceKind: "decoded", source: "status bits" },
         { kind: "boolean", path: ["health", "ac_output_on"], labelId: "metric_ac_output_on", icon: "fas fa-power-off", sourceKind: "decoded", source: "status bits" },
         { kind: "list", path: ["health", "active_warning_bits"], labelId: "metric_active_warnings", icon: "fas fa-circle-exclamation", sourceKind: "decoded", source: "QPIWS", showWhenEmpty: true },
+        { kind: "text", path: ["health", "warning_bitmap"], labelId: "metric_warning_bitmap", icon: "fas fa-list-ol", sourceKind: "raw", source: "QPIWS" },
+        { kind: "text", path: ["health", "flag_blob"], labelId: "metric_flag_blob", icon: "fas fa-flag", sourceKind: "raw", source: "QFLAG" },
+        { kind: "text", path: ["live", "status_bits"], labelId: "metric_status_bits", icon: "fas fa-list-check", sourceKind: "raw", source: "status bits" },
+    ],
+    phocosParameters: [
+        { kind: "text", path: ["settings", "battery_type"], labelId: "metric_battery_type", icon: "fas fa-car-battery", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_rating_voltage_v"], labelId: "metric_battery_rating_voltage", icon: "fas fa-ruler-combined", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_bulk_voltage_v"], labelId: "metric_battery_bulk_voltage", icon: "fas fa-arrow-up", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_float_voltage_v"], labelId: "metric_battery_float_voltage", icon: "fas fa-water", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_recharge_voltage_v"], labelId: "metric_battery_recharge_voltage", icon: "fas fa-rotate", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_redischarge_voltage_v"], labelId: "metric_battery_redischarge_voltage", icon: "fas fa-repeat", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_redischarge_voltage_from_scc_v"], labelId: "metric_battery_redischarge_voltage_scc", icon: "fas fa-solar-panel", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "battery_under_voltage_v"], labelId: "metric_battery_under_voltage", icon: "fas fa-triangle-exclamation", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "max_charging_current_a"], labelId: "metric_max_charging_current", icon: "fas fa-charging-station", digits: 0, unit: "A", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "max_ac_charging_current_a"], labelId: "metric_max_ac_charging_current", icon: "fas fa-plug-circle-bolt", digits: 0, unit: "A", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "cv_charge_time_minutes"], labelId: "metric_cv_charge_time", icon: "fas fa-clock", digits: 0, unit: "min", source: "QPIRI" },
+        { kind: "text", path: ["device", "battery_charger_source_priority"], labelId: "metric_battery_priority", icon: "fas fa-sliders", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "grid_rating_voltage_v"], labelId: "metric_grid_rating_voltage", icon: "fas fa-plug-circle-bolt", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "grid_rating_current_a"], labelId: "metric_grid_rating_current", icon: "fas fa-bolt", digits: 1, unit: "A", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "ac_output_rating_voltage_v"], labelId: "metric_output_rating_voltage", icon: "fas fa-bolt", digits: 1, unit: "V", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "ac_output_rating_frequency_hz"], labelId: "metric_output_rating_frequency", icon: "fas fa-wave-square", digits: 1, unit: "Hz", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "ac_output_rating_current_a"], labelId: "metric_rated_output_current", icon: "fas fa-bolt", digits: 1, unit: "A", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "ac_output_rating_active_power_w"], labelId: "metric_rated_active_power", icon: "fas fa-certificate", digits: 0, unit: "W", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "ac_output_rating_apparent_power_va"], labelId: "metric_rated_apparent_power", icon: "fas fa-certificate", digits: 0, unit: "VA", source: "QPIRI" },
+        { kind: "text", path: ["device", "input_voltage_range"], labelId: "metric_input_voltage_range", icon: "fas fa-plug", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "text", path: ["device", "output_source_priority"], labelId: "metric_output_priority", icon: "fas fa-shuffle", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "settingMetric", path: ["settings", "max_parallel_units"], labelId: "metric_max_parallel_units", icon: "fas fa-network-wired", digits: 0, unit: "", source: "QPIRI" },
+        { kind: "text", path: ["device", "machine_type"], labelId: "metric_machine_type", icon: "fas fa-microchip", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "text", path: ["device", "topology"], labelId: "metric_topology", icon: "fas fa-sitemap", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "text", path: ["settings", "output_mode"], labelId: "metric_ac_output_mode", icon: "fas fa-diagram-project", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "text", path: ["device", "pv_ok_condition"], labelId: "metric_pv_ok_condition", icon: "fas fa-circle-check", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "text", path: ["device", "pv_power_balance"], labelId: "metric_pv_power_balance", icon: "fas fa-scale-balanced", sourceKind: "decoded", source: "QPIRI" },
+        { kind: "text", path: ["device", "country_code"], labelId: "metric_country_code", icon: "fas fa-map", sourceKind: "raw", source: "QPIGS" },
     ],
 }
 
@@ -155,11 +198,13 @@ const HISTORY_CHART_SHELL_IDS = [
     "history_chart_high_res_shell",
 ];
 const DASHBOARD_SKELETON_TABLE_ROWS = {
-    dash_current_table: 7,
-    dash_battery_table: 8,
-    dash_solar_table: 9,
-    dash_device_table: 10,
+    dash_current_table: 12,
+    dash_battery_table: 9,
+    dash_solar_table: 12,
+    dash_device_table: 12,
+    dash_phocos_parameters_table: 28,
 };
+const DASHBOARD_TABLE_IDS = Object.keys(DASHBOARD_SKELETON_TABLE_ROWS);
 
 function getInitialViewFromQuery() {
     const params = new URLSearchParams(window.location.search);
@@ -816,7 +861,6 @@ function setDashboardInitialLoadingState(loading) {
     const subtitle = document.getElementById("dashboard_subtitle_time");
     if (subtitle != null)
         subtitle.classList.toggle("app-skeleton-text", loading === true);
-
     if (loading) {
         setViewBusyState("view_dashboard", true);
         Object.entries(DASHBOARD_SKELETON_TABLE_ROWS).forEach(([containerId, rowCount]) => {
@@ -871,6 +915,19 @@ function buildDashboardRow(entry, payload) {
     }
 
     const rawValue = getNestedValue(payload, entry.path);
+    if (entry.kind == "settingMetric") {
+        if (rawValue == null || rawValue === "" || Number.isNaN(Number(rawValue)) || !Number.isFinite(Number(rawValue)))
+            return null;
+        const value = numFormat(Number(rawValue), entry.digits ?? 0);
+        return {
+            icon: entry.icon,
+            label: getDashboardMetricString(entry.labelId),
+            value,
+            unit: entry.unit || "",
+            tooltip: buildDashboardTooltip(entry, value + (entry.unit ? " " + entry.unit : "")),
+        };
+    }
+
     if (entry.kind == "boolean") {
         if (rawValue == null)
             return null;
@@ -933,8 +990,8 @@ function renderDashboardTable(containerId, config, payload) {
             + buildInfoBadge(row.tooltip)
             + '</span>'
             + '</td>'
-            + '<td class="text-end text-nowrap">' + escapeHtml(row.value) + '</td>'
-            + '<td class="text-end text-nowrap text-secondary">' + escapeHtml(row.unit) + '</td>'
+            + '<td class="text-end dashboard-value-cell">' + escapeHtml(row.value) + '</td>'
+            + '<td class="text-end dashboard-unit-cell text-secondary">' + escapeHtml(row.unit) + '</td>'
             + '</tr>'
         )).join("")
         + '</tbody></table>';
@@ -975,7 +1032,7 @@ function updateCurrentStats() {
             gDashboardHasLoadedOnce = true;
             setDashboardInitialLoadingState(false);
             document.getElementById("dashboard_subtitle_time").innerHTML = getGenericString("unavailable");
-            ["dash_current_table", "dash_battery_table", "dash_solar_table", "dash_device_table"].forEach(id => {
+            DASHBOARD_TABLE_IDS.forEach(id => {
                 const container = document.getElementById(id);
                 if (container != null)
                     container.innerHTML = '<div class="small text-secondary">' + escapeHtml(getDashboardInfoString("no_direct_values")) + '</div>';
@@ -1005,6 +1062,7 @@ function updateCurrentStats() {
         renderDashboardTable("dash_battery_table", dashboardTableConfigs.battery, stats);
         renderDashboardTable("dash_solar_table", dashboardTableConfigs.solar, stats);
         renderDashboardTable("dash_device_table", dashboardTableConfigs.device, stats);
+        renderDashboardTable("dash_phocos_parameters_table", dashboardTableConfigs.phocosParameters, stats);
         if (typeof updateInfoGraphic === "function")
             updateInfoGraphic(stats);
         initDashboardTooltips();
@@ -1018,7 +1076,7 @@ function updateCurrentStats() {
         setDashboardInitialLoadingState(false);
         renderTelemetryStatus();
         document.getElementById("dashboard_subtitle_time").innerHTML = getGenericString("unavailable");
-        ["dash_current_table", "dash_battery_table", "dash_solar_table", "dash_device_table"].forEach(id => {
+        DASHBOARD_TABLE_IDS.forEach(id => {
             const container = document.getElementById(id);
             if (container != null)
                 container.innerHTML = '<div class="small text-secondary">' + escapeHtml(getDashboardInfoString("no_direct_values")) + '</div>';

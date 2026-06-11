@@ -1096,16 +1096,19 @@ a {
 }
 
 .power-flow-node-solar {
+  color: var(--app-flow-solar);
   left: 22%;
   top: 30.56%;
 }
 
 .power-flow-node-grid {
+  color: var(--app-flow-grid);
   left: 22%;
   top: 69.44%;
 }
 
 .power-flow-node-hub {
+  color: var(--app-flow-hub);
   left: 50%;
   top: 50%;
   height: 3.2rem;
@@ -1113,11 +1116,13 @@ a {
 }
 
 .power-flow-node-home {
+  color: var(--app-flow-home);
   left: 78%;
   top: 30.56%;
 }
 
 .power-flow-node-battery {
+  color: var(--app-flow-battery);
   left: 78%;
   top: 69.44%;
 }
@@ -1277,6 +1282,17 @@ a {
   padding-bottom: 0.8rem;
   padding-top: 0.8rem;
   vertical-align: middle;
+}
+
+.dashboard-value-cell {
+  max-width: 12rem;
+  min-width: 4.5rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.dashboard-unit-cell {
+  white-space: nowrap;
 }
 
 .dashboard-icon-cell,
