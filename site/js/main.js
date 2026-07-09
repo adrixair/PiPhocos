@@ -1045,19 +1045,21 @@ function updateBillingInfoBadges(stats, grossBillEstimate, finalBillEstimate) {
 
     setInfoBadgeContent(
         "history_text_bill_total",
-        "Coût brut TTC au tarif réseau classique. Il inclut la consommation totale valorisée au tarif réseau et l'abonnement fixe TTC proratisé. Abonnement utilisé : "
+        "Coût brut TTC si toute l'électricité consommée avait été achetée au réseau. Il inclut l'abonnement fixe au prix réel configuré : "
             + monthlySubscriptionText
-            + "/mois TTC, soit 14,68 € HT/mois + 1,62 € HT/mois de CTA, avec TVA 20 %. Sur cette période : "
+            + "/mois TTC. Sur cette période : "
             + periodSubscriptionText
-            + " d'abonnement."
+            + " d'abonnement fixe TTC."
     );
     setInfoBadgeContent(
         "history_text_earned_total",
-        "Facture estimée TTC à payer. Elle inclut l'énergie réseau réellement achetée et l'abonnement fixe TTC proratisé; cet abonnement reste dû même avec peu ou pas de consommation. Sur cette période : "
+        "Facture estimée TTC à payer : énergie réseau réellement achetée + abonnement fixe TTC proratisé. L'économie solaire n'est pas une remise EDF et ne réduit pas l'abonnement. Sur cette période : "
             + gridEnergyText
             + " d'énergie réseau + "
             + periodSubscriptionText
-            + " d'abonnement fixe = "
+            + " d'abonnement fixe ("
+            + monthlySubscriptionText
+            + "/mois TTC) = "
             + formatTooltipEuro(finalBillEstimate)
             + "."
     );

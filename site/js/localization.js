@@ -55,9 +55,9 @@ let translations = [
     ["history_card_consumption", "Consommation électrique"],
     ["history_text_produced", "Énergie produite"],
     ["history_text_earned_feedin", "Crédit injection"],
-    ["history_text_earned_self", "Réduction solaire"],
+    ["history_text_earned_self", "Économie solaire"],
     ["history_text_bill_total", "Coût brut TTC"],
-    ["history_text_earned_total", "Facture estimée TTC"],
+    ["history_text_earned_total", "Facture TTC estimée"],
     ["history_text_fedin", "Vers le réseau"],
     ["history_text_self_consumed", "Utilisée par la maison"],
     ["history_text_battery_charge", "Vers la batterie (est.)"],
@@ -261,10 +261,10 @@ let historyInfoStrings = {
         "Crédit estimé pour l'énergie injectée sur le réseau, soustrait de la facture quand il existe.",
     ],
     earned_savings: [
-        "Réduction TTC estimée grâce à l'énergie solaire utilisée sur place au lieu d'acheter ces kWh au réseau.",
+        "Économie TTC estimée grâce à l'énergie solaire utilisée sur place au lieu d'acheter ces kWh au réseau. Ce n'est pas une remise EDF.",
     ],
     earned_total: [
-        "Montant TTC estimé de la facture à payer sur la période. L'abonnement fixe TTC est inclus, même si la consommation est faible.",
+        "Montant TTC estimé de la facture à payer sur la période. L'abonnement fixe TTC est inclus au prix réel configuré, même si la consommation est faible.",
     ],
     bill_without_self_consumption_eur: [
         "Coût brut TTC de l'électricité consommée au tarif réseau classique, abonnement fixe TTC proratisé inclus.",
