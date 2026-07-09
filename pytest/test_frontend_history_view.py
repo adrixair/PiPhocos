@@ -41,10 +41,14 @@ def test_billing_card_uses_short_invoice_labels():
     )
     visible_copy = html + "\n" + localization
 
-    assert "Coût brut TTC" in visible_copy
+    assert '<td id="history_text_bill_total">Coût brut</td>' in html
+    assert '["history_text_bill_total", "Coût brut"]' in localization
+    assert '["history_text_bill_total", "Coût brut TTC"]' not in localization
     assert "Économie solaire" in visible_copy
     assert "Crédit injection" in visible_copy
-    assert "Facture TTC estimée" in visible_copy
+    assert '<td id="history_text_earned_total">Facture estimée</td>' in html
+    assert '["history_text_earned_total", "Facture estimée"]' in localization
+    assert '["history_text_earned_total", "Facture TTC estimée"]' not in localization
     assert "abonnement fixe TTC" in visible_copy
     assert "Énergie réseau" not in visible_copy
     assert "history_text_bill_subscription" not in visible_copy
