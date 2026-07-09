@@ -17,7 +17,7 @@ let translations = [
     ["sidebar_all_time", "Total"],
     ["sidebar_headline_misc", "Divers"],
     ["sidebar_csv", "Téléchargement CSV"],
-    ["sidebar_live_telemetry", "Phocos"],
+    ["sidebar_live_telemetry", ""],
 
     // Titres
     ["headline_dashboard", "Tableau de bord"],

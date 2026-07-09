@@ -56,3 +56,23 @@ def test_billing_card_uses_short_invoice_labels():
     assert "Coût net estimé" not in visible_copy
     assert "sans autoconsommation" not in visible_copy
     assert "Réduction autoconsommation" not in visible_copy
+
+
+def test_sidebar_telemetry_status_stays_blank_until_status_is_known():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "js" / "main.js").read_text(encoding="utf-8")
+    localization = (ROOT / "site" / "js" / "localization.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        '<div class="app-telemetry-status" id="sidebar_live_telemetry" '
+        'aria-live="polite"></div>'
+    ) in html
+    assert (
+        '<div class="app-sidebar-detail" id="telemetry_detail" '
+        'aria-live="polite"></div>'
+    ) in html
+    assert '["sidebar_live_telemetry", ""]' in localization
+    assert "let gTelemetryConnectionHealthy = null;" in script
+    assert 'element.classList.remove("is-online", "is-offline");' in script

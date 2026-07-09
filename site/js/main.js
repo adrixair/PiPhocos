@@ -129,7 +129,7 @@ let gInfoTooltipHandlersReady = false;
 let gInfoTooltipShowTimer = null;
 let gInfoTooltipHideTimer = null;
 let gLastTelemetryRecordedAt = null;
-let gTelemetryConnectionHealthy = false;
+let gTelemetryConnectionHealthy = null;
 let gInitialViewApplied = false;
 let gCurrentView = "dashboard";
 let gDashboardOverviewRequest = null;
@@ -482,6 +482,10 @@ function renderTelemetryDetail() {
     const element = document.getElementById("telemetry_detail");
     if (element == null)
         return;
+    if (gTelemetryConnectionHealthy == null && gLastTelemetryRecordedAt == null) {
+        element.textContent = "";
+        return;
+    }
 
     const timeLabel = getTelemetryTimeLabel();
     if (timeLabel != null) {
@@ -497,6 +501,12 @@ function renderTelemetryStatus() {
     renderTelemetryDetail();
     if (element == null)
         return;
+
+    if (gTelemetryConnectionHealthy == null) {
+        element.textContent = "";
+        element.classList.remove("is-online", "is-offline");
+        return;
+    }
 
     element.textContent = getGenericString(
         gTelemetryConnectionHealthy
