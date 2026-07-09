@@ -1,77 +1,83 @@
-# Raspberry Pi setup
+# Installation Raspberry Pi
 
-This is the primary deployment path for now.
+Le Raspberry Pi est le chemin de deploiement principal pour une acquisition
+stable en USB/RS232.
 
-## Before you start
+## Prerequis
 
-You need:
+- Raspberry Pi avec Docker et Docker Compose.
+- Adaptateur USB/RS232 relie au Phocos.
+- Acces terminal au Raspberry Pi.
 
-- a Raspberry Pi with Docker installed
-- your Phocos inverter connected through a USB / RS232 adapter
-- access to the Raspberry Pi terminal
-
-## 1. Find the adapter path
-
-On the Raspberry Pi, run:
+## 1. Identifier l'adaptateur serie
 
 ```bash
 ls -l /dev/serial/by-id/
 ```
 
-If this folder is empty, run:
+Si le dossier est vide :
 
 ```bash
 ls -l /dev/ttyUSB* /dev/ttyACM*
 ```
 
-Keep the path you find. You will need it in the next step.
+Preferer un chemin stable sous `/dev/serial/by-id/` quand il existe.
 
-## 2. Download the project
+## 2. Recuperer le projet
 
 ```bash
-git clone https://github.com/adrixair/PiPhocos.git
+git clone <url-du-repot-git>
 cd PiPhocos
 mkdir -p data
 cp templates/config.yml data/config.yml
 ```
 
-## 3. Edit the config
+## 3. Configurer
 
-Open `data/config.yml` and change only:
+Modifier `data/config.yml` :
 
 - `phocos.serial_port`
 - `device.start_date`
 - `prices.price_per_grid_kwh`
 - `prices.revenue_per_fed_in_kwh`
 
-If you are not sure about the app name, keep the default.
+Laisser `privacy.expose_device_identifiers: false` pour ne pas exposer le
+numero de serie ou l'ID appareil dans l'API et l'interface.
 
-## 4. Start PiPhocos
+## 4. Demarrer
 
 ```bash
-export PIPHOCOS_SERIAL_PORT=/dev/serial/by-id/your-adapter
+export PIPHOCOS_SERIAL_PORT=/dev/serial/by-id/votre-adaptateur
 docker compose up --build -d piphocos
 ```
 
-If your adapter is simply `/dev/ttyUSB0`, use that instead.
+Si l'adaptateur est simplement `/dev/ttyUSB0`, utiliser cette valeur.
 
-Docker publishes the dashboard on localhost by default. If another device on your trusted LAN needs to open it, bind the service to a specific LAN address:
+Par defaut, le service HTTP est publie sur `127.0.0.1`. Pour ouvrir le tableau
+de bord sur un reseau local de confiance :
+
 ```bash
-export PIPHOCOS_HTTP_BIND=<your-raspberry-pi-lan-ip>
+export PIPHOCOS_HTTP_BIND=<ip-lan-du-raspberry-pi>
 docker compose up --build -d piphocos
 ```
 
-PiPhocos does not include built-in authentication. Do not expose port 5000 directly to the public Internet. Use a private VPN or an authenticated reverse proxy for remote access.
+PiPhocos n'integre pas d'authentification. Ne pas exposer le port HTTP sur
+Internet; utiliser un VPN ou un reverse proxy authentifie.
 
-## 5. Open the dashboard
+## 5. Ouvrir le tableau de bord
 
-Open one of these addresses:
+- `http://localhost:5000` depuis le Raspberry Pi.
+- `http://<ip-lan-du-raspberry-pi>:5000` depuis le LAN si
+  `PIPHOCOS_HTTP_BIND` pointe vers cette adresse.
 
-- `http://localhost:5000` on the Raspberry Pi itself
-- `http://<your-raspberry-pi-ip>:5000` from another device on the same network after setting `PIPHOCOS_HTTP_BIND` to that LAN address
+## Diagnostic rapide
 
-## If it does not work
+- Verifier que `phocos.serial_port` et `PIPHOCOS_SERIAL_PORT` pointent vers le
+  meme adaptateur.
+- Si l'interface s'ouvre mais reste vide, lire `data/server.log` et
+  `data/grabber.log`.
+- En cas de doute base de donnees :
 
-- Check that the adapter path in `data/config.yml` is correct.
-- Check that the `PIPHOCOS_SERIAL_PORT` value matches the same path.
-- If the dashboard opens but stays empty, check `data/server.log` and `data/grabber.log`.
+```bash
+sqlite3 data/db.sqlite "PRAGMA integrity_check; PRAGMA wal_checkpoint(PASSIVE);"
+```

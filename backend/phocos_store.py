@@ -1,9 +1,11 @@
 import json
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from phocos_protocol import (
+    SEMANTICS_CACHED,
     SEMANTICS_DERIVED,
     SEMANTICS_EXACT,
     SEMANTICS_UNSUPPORTED,
@@ -13,6 +15,8 @@ from phocos_protocol import (
 CURRENT_SNAPSHOT_SLOT = "current"
 RAW_HISTORY_RETENTION_HOURS = 24
 ARCHIVED_SAMPLE_BUCKET_MINUTES = 10
+DEFAULT_ENERGY_INTERVAL_RETENTION_DAYS = 45
+DEFAULT_ENERGY_INTERVAL_PRUNE_MAX_DAYS = 14
 
 HISTORY_SAMPLE_COLUMNS = (
     "recorded_at",
@@ -165,11 +169,18 @@ CUMULATIVE_TOTAL_COLUMNS = ALL_ENERGY_COLUMNS + (
 
 SUMMARY_ROLLUP_STATE_KEY = "energy_rollups_version"
 SUMMARY_ROLLUP_VERSION = "1"
+QUALITY_SUMMARY_ROLLUP_STATE_KEY = "energy_quality_rollups_version"
+QUALITY_SUMMARY_ROLLUP_VERSION = "1"
+FLOW_ENERGY_BACKFILL_STATE_KEY = "flow_energy_backfill_version"
+FLOW_ENERGY_BACKFILL_VERSION = "2"
+MAX_AUTOMATIC_FLOW_BACKFILL_ROWS = 50_000
+MAX_AUTOMATIC_ARCHIVE_BUCKET_BACKFILL_ROWS = 50_000
 SUMMARY_ROLLUP_TABLES = {
     "day": "energy_summary_days",
     "month": "energy_summary_months",
     "year": "energy_summary_years",
 }
+QUALITY_SUMMARY_DAYS_TABLE = "energy_quality_summary_days"
 SUMMARY_ROLLUP_KEYS = {
     "day": "local_day",
     "month": "local_month",
@@ -179,6 +190,7 @@ SUMMARY_ROLLUP_KEYS = {
 SAMPLE_COLUMNS = (
     "recorded_at",
     "recorded_minute",
+    "archive_bucket_local",
     "local_day",
     "local_month",
     "local_year",
@@ -263,10 +275,21 @@ def _utc_from_iso(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
 
-def _local_parts(recorded_at: str) -> tuple[str, str, str, str]:
+def _archive_bucket_for_local(local: datetime) -> str:
+    bucket_start = local.replace(
+        minute=(local.minute // ARCHIVED_SAMPLE_BUCKET_MINUTES)
+        * ARCHIVED_SAMPLE_BUCKET_MINUTES,
+        second=0,
+        microsecond=0,
+    )
+    return bucket_start.strftime("%Y-%m-%dT%H:%M")
+
+
+def _local_parts(recorded_at: str) -> tuple[str, str, str, str, str]:
     local = _utc_from_iso(recorded_at).astimezone()
     return (
         local.strftime("%Y-%m-%dT%H:%M"),
+        _archive_bucket_for_local(local),
         local.strftime("%Y-%m-%d"),
         local.strftime("%Y-%m"),
         local.strftime("%Y"),
@@ -399,6 +422,96 @@ def _aggregate_day_summary(db, local_day: str) -> dict[str, Any]:
     return dict(row) if row else {}
 
 
+def _reconciliation_quality_select(source_prefix: str = "") -> str:
+    prefix = f"{source_prefix}." if source_prefix else ""
+    return f"""
+            COALESCE({prefix}quality, 'unknown') AS quality,
+            COUNT(*) AS interval_count,
+            COALESCE(SUM(CASE WHEN {prefix}contiguous = 1 THEN 1 ELSE 0 END), 0) AS integrated_interval_count,
+            COALESCE(SUM(CASE WHEN {prefix}contiguous = 0 THEN 1 ELSE 0 END), 0) AS dropped_interval_count,
+            COALESCE(SUM(CASE WHEN {prefix}contiguous = 1 THEN {prefix}interval_seconds ELSE 0.0 END), 0.0) AS integrated_seconds,
+            COALESCE(SUM(CASE WHEN {prefix}contiguous = 0 AND {prefix}interval_seconds > 0 THEN {prefix}interval_seconds ELSE 0.0 END), 0.0) AS dropped_seconds,
+            COALESCE(SUM(CASE WHEN {prefix}interval_seconds > 0 THEN {prefix}interval_seconds ELSE 0.0 END), 0.0) AS observed_interval_seconds,
+            COALESCE(MAX({prefix}interval_seconds), 0.0) AS max_interval_seconds,
+            COALESCE(SUM(CASE WHEN {prefix}interval_seconds > 0 THEN 1 ELSE 0 END), 0) AS positive_interval_count,
+            COALESCE(SUM({prefix}pv_energy_kwh), 0.0) AS pv_energy_kwh,
+            COALESCE(SUM({prefix}load_energy_kwh), 0.0) AS load_energy_kwh,
+            COALESCE(SUM({prefix}grid_export_energy_kwh), 0.0) AS grid_export_energy_kwh,
+            COALESCE(SUM({prefix}grid_to_load_energy_kwh + {prefix}grid_to_battery_energy_kwh), 0.0) AS grid_import_energy_kwh,
+            COALESCE(SUM({prefix}grid_to_load_energy_kwh), 0.0) AS grid_to_load_energy_kwh,
+            COALESCE(SUM({prefix}grid_to_battery_energy_kwh), 0.0) AS grid_to_battery_energy_kwh
+    """
+
+
+def _refresh_day_quality_summary(db, local_day: str):
+    if not local_day:
+        return
+    rows = db.execute(
+        f"""
+        SELECT
+            local_day,
+            {_reconciliation_quality_select()}
+        FROM derived_energy_intervals
+        WHERE local_day = ?
+        GROUP BY local_day, quality
+        """,
+        [local_day],
+    )
+    db.execute(
+        f"DELETE FROM {QUALITY_SUMMARY_DAYS_TABLE} WHERE local_day = ?",
+        [local_day],
+    )
+    if not rows:
+        return
+
+    updated_at = datetime.now(timezone.utc).isoformat()
+    db.executemany(
+        f"""
+        INSERT OR REPLACE INTO {QUALITY_SUMMARY_DAYS_TABLE} (
+            local_day,
+            quality,
+            interval_count,
+            integrated_interval_count,
+            dropped_interval_count,
+            integrated_seconds,
+            dropped_seconds,
+            observed_interval_seconds,
+            max_interval_seconds,
+            positive_interval_count,
+            pv_energy_kwh,
+            load_energy_kwh,
+            grid_export_energy_kwh,
+            grid_import_energy_kwh,
+            grid_to_load_energy_kwh,
+            grid_to_battery_energy_kwh,
+            updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                row["local_day"],
+                row["quality"] or "unknown",
+                row["interval_count"],
+                row["integrated_interval_count"],
+                row["dropped_interval_count"],
+                row["integrated_seconds"],
+                row["dropped_seconds"],
+                row["observed_interval_seconds"],
+                row["max_interval_seconds"],
+                row["positive_interval_count"],
+                row["pv_energy_kwh"],
+                row["load_energy_kwh"],
+                row["grid_export_energy_kwh"],
+                row["grid_import_energy_kwh"],
+                row["grid_to_load_energy_kwh"],
+                row["grid_to_battery_energy_kwh"],
+                updated_at,
+            )
+            for row in rows
+        ],
+    )
+
+
 def _aggregate_summary_rows(
     db,
     source_table: str,
@@ -467,6 +580,7 @@ def _refresh_day_summary(
         },
     }
     _write_summary_row(db, SUMMARY_ROLLUP_TABLES["day"], row)
+    _refresh_day_quality_summary(db, local_day)
 
 
 def _refresh_month_summary(
@@ -585,6 +699,7 @@ def rebuild_energy_rollups(
 ):
     reference_time = reference_time or datetime.now(timezone.utc)
     for table in (
+        QUALITY_SUMMARY_DAYS_TABLE,
         SUMMARY_ROLLUP_TABLES["year"],
         SUMMARY_ROLLUP_TABLES["month"],
         SUMMARY_ROLLUP_TABLES["day"],
@@ -622,6 +737,272 @@ def rebuild_energy_rollups(
         _refresh_year_summary(db, row["local_year"], reference_time=reference_time)
 
     _set_rollup_state(db, SUMMARY_ROLLUP_STATE_KEY, SUMMARY_ROLLUP_VERSION)
+    _set_rollup_state(
+        db,
+        QUALITY_SUMMARY_ROLLUP_STATE_KEY,
+        QUALITY_SUMMARY_ROLLUP_VERSION,
+    )
+
+
+def rebuild_quality_summary_days(
+    db,
+    *,
+    start_day: Optional[str] = None,
+    end_day_exclusive: Optional[str] = None,
+    reference_time: Optional[datetime] = None,
+) -> int:
+    del reference_time  # Reserved for symmetry with the energy rollup rebuild API.
+    filters = []
+    params = []
+    if start_day:
+        filters.append("local_day >= ?")
+        params.append(start_day)
+    if end_day_exclusive:
+        filters.append("local_day < ?")
+        params.append(end_day_exclusive)
+    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+    days = [
+        row["local_day"]
+        for row in db.execute(
+            f"""
+            SELECT DISTINCT local_day
+            FROM derived_energy_intervals
+            {where_clause}
+            ORDER BY local_day ASC
+            """,
+            params,
+        )
+    ]
+    for local_day in days:
+        _refresh_day_quality_summary(db, local_day)
+
+    if start_day is None and end_day_exclusive is None:
+        _set_rollup_state(
+            db,
+            QUALITY_SUMMARY_ROLLUP_STATE_KEY,
+            QUALITY_SUMMARY_ROLLUP_VERSION,
+        )
+    return len(days)
+
+
+def refresh_missing_quality_summary_days(
+    db,
+    start_day: str,
+    end_day_exclusive: str,
+    *,
+    max_days: int = 400,
+) -> dict[str, Any]:
+    rows = db.execute(
+        f"""
+        SELECT DISTINCT d.local_day
+        FROM derived_energy_intervals d
+        LEFT JOIN (
+            SELECT DISTINCT local_day
+            FROM {QUALITY_SUMMARY_DAYS_TABLE}
+        ) q ON q.local_day = d.local_day
+        WHERE
+            d.local_day >= ?
+            AND d.local_day < ?
+            AND q.local_day IS NULL
+        ORDER BY d.local_day ASC
+        LIMIT ?
+        """,
+        [start_day, end_day_exclusive, max(int(max_days), 1) + 1],
+    )
+    days = [row["local_day"] for row in rows]
+    limited = len(days) > max_days
+    if limited:
+        days = days[:max_days]
+    for local_day in days:
+        _refresh_day_quality_summary(db, local_day)
+    return {
+        "refreshed_days": len(days),
+        "limited": limited,
+    }
+
+
+def get_reconciliation_quality_summary_rows(
+    db,
+    start_day: str,
+    end_day_exclusive: str,
+):
+    return db.execute(
+        f"""
+        SELECT
+            COALESCE(quality, 'unknown') AS quality,
+            COALESCE(SUM(interval_count), 0) AS interval_count,
+            COALESCE(SUM(integrated_interval_count), 0) AS integrated_interval_count,
+            COALESCE(SUM(dropped_interval_count), 0) AS dropped_interval_count,
+            COALESCE(SUM(integrated_seconds), 0.0) AS integrated_seconds,
+            COALESCE(SUM(dropped_seconds), 0.0) AS dropped_seconds,
+            COALESCE(SUM(observed_interval_seconds), 0.0) AS observed_interval_seconds,
+            COALESCE(MAX(max_interval_seconds), 0.0) AS max_interval_seconds,
+            COALESCE(SUM(positive_interval_count), 0) AS positive_interval_count,
+            COALESCE(SUM(pv_energy_kwh), 0.0) AS pv_energy_kwh,
+            COALESCE(SUM(load_energy_kwh), 0.0) AS load_energy_kwh,
+            COALESCE(SUM(grid_export_energy_kwh), 0.0) AS grid_export_energy_kwh,
+            COALESCE(SUM(grid_import_energy_kwh), 0.0) AS grid_import_energy_kwh,
+            COALESCE(SUM(grid_to_load_energy_kwh), 0.0) AS grid_to_load_energy_kwh,
+            COALESCE(SUM(grid_to_battery_energy_kwh), 0.0) AS grid_to_battery_energy_kwh
+        FROM {QUALITY_SUMMARY_DAYS_TABLE}
+        WHERE local_day >= ? AND local_day < ?
+        GROUP BY quality
+        ORDER BY quality ASC
+        """,
+        [start_day, end_day_exclusive],
+    )
+
+
+def get_reconciliation_full_day_rows(
+    db,
+    start_day: str,
+    end_day_exclusive: str,
+):
+    return db.execute(
+        f"""
+        WITH summarized_days AS (
+            SELECT DISTINCT local_day
+            FROM {QUALITY_SUMMARY_DAYS_TABLE}
+            WHERE local_day >= ? AND local_day < ?
+        ),
+        summary_rows AS (
+            SELECT
+                COALESCE(quality, 'unknown') AS quality,
+                COALESCE(SUM(interval_count), 0) AS interval_count,
+                COALESCE(SUM(integrated_interval_count), 0) AS integrated_interval_count,
+                COALESCE(SUM(dropped_interval_count), 0) AS dropped_interval_count,
+                COALESCE(SUM(integrated_seconds), 0.0) AS integrated_seconds,
+                COALESCE(SUM(dropped_seconds), 0.0) AS dropped_seconds,
+                COALESCE(SUM(observed_interval_seconds), 0.0) AS observed_interval_seconds,
+                COALESCE(MAX(max_interval_seconds), 0.0) AS max_interval_seconds,
+                COALESCE(SUM(positive_interval_count), 0) AS positive_interval_count,
+                COALESCE(SUM(pv_energy_kwh), 0.0) AS pv_energy_kwh,
+                COALESCE(SUM(load_energy_kwh), 0.0) AS load_energy_kwh,
+                COALESCE(SUM(grid_export_energy_kwh), 0.0) AS grid_export_energy_kwh,
+                COALESCE(SUM(grid_import_energy_kwh), 0.0) AS grid_import_energy_kwh,
+                COALESCE(SUM(grid_to_load_energy_kwh), 0.0) AS grid_to_load_energy_kwh,
+                COALESCE(SUM(grid_to_battery_energy_kwh), 0.0) AS grid_to_battery_energy_kwh
+            FROM {QUALITY_SUMMARY_DAYS_TABLE}
+            WHERE local_day >= ? AND local_day < ?
+            GROUP BY quality
+        ),
+        interval_rows AS (
+            SELECT
+                {_reconciliation_quality_select("d")}
+            FROM derived_energy_intervals d
+            WHERE
+                d.local_day >= ?
+                AND d.local_day < ?
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM summarized_days s
+                    WHERE s.local_day = d.local_day
+                )
+            GROUP BY d.quality
+        ),
+        combined_rows AS (
+            SELECT * FROM summary_rows
+            UNION ALL
+            SELECT * FROM interval_rows
+        )
+        SELECT
+            quality,
+            COALESCE(SUM(interval_count), 0) AS interval_count,
+            COALESCE(SUM(integrated_interval_count), 0) AS integrated_interval_count,
+            COALESCE(SUM(dropped_interval_count), 0) AS dropped_interval_count,
+            COALESCE(SUM(integrated_seconds), 0.0) AS integrated_seconds,
+            COALESCE(SUM(dropped_seconds), 0.0) AS dropped_seconds,
+            COALESCE(SUM(observed_interval_seconds), 0.0) AS observed_interval_seconds,
+            COALESCE(MAX(max_interval_seconds), 0.0) AS max_interval_seconds,
+            COALESCE(SUM(positive_interval_count), 0) AS positive_interval_count,
+            COALESCE(SUM(pv_energy_kwh), 0.0) AS pv_energy_kwh,
+            COALESCE(SUM(load_energy_kwh), 0.0) AS load_energy_kwh,
+            COALESCE(SUM(grid_export_energy_kwh), 0.0) AS grid_export_energy_kwh,
+            COALESCE(SUM(grid_import_energy_kwh), 0.0) AS grid_import_energy_kwh,
+            COALESCE(SUM(grid_to_load_energy_kwh), 0.0) AS grid_to_load_energy_kwh,
+            COALESCE(SUM(grid_to_battery_energy_kwh), 0.0) AS grid_to_battery_energy_kwh
+        FROM combined_rows
+        GROUP BY quality
+        ORDER BY quality ASC
+        """,
+        [
+            start_day,
+            end_day_exclusive,
+            start_day,
+            end_day_exclusive,
+            start_day,
+            end_day_exclusive,
+        ],
+    )
+
+
+def count_reconciliation_quality_summary_days(
+    db,
+    start_day: str,
+    end_day_exclusive: str,
+) -> int:
+    row = db.fetchone(
+        f"""
+        SELECT COUNT(DISTINCT local_day) AS day_count
+        FROM {QUALITY_SUMMARY_DAYS_TABLE}
+        WHERE local_day >= ? AND local_day < ?
+        """,
+        [start_day, end_day_exclusive],
+    )
+    return int(row["day_count"] or 0) if row else 0
+
+
+def count_reconciliation_unsummarized_interval_days(
+    db,
+    start_day: str,
+    end_day_exclusive: str,
+) -> int:
+    row = db.fetchone(
+        f"""
+        SELECT COUNT(DISTINCT d.local_day) AS day_count
+        FROM derived_energy_intervals d
+        WHERE
+            d.local_day >= ?
+            AND d.local_day < ?
+            AND NOT EXISTS (
+                SELECT 1
+                FROM {QUALITY_SUMMARY_DAYS_TABLE} q
+                WHERE q.local_day = d.local_day
+            )
+        """,
+        [start_day, end_day_exclusive],
+    )
+    return int(row["day_count"] or 0) if row else 0
+
+
+def count_reconciliation_interval_days(
+    db,
+    start_day: str,
+    end_day_exclusive: str,
+) -> int:
+    row = db.fetchone(
+        """
+        SELECT COUNT(DISTINCT local_day) AS day_count
+        FROM derived_energy_intervals
+        WHERE local_day >= ? AND local_day < ?
+        """,
+        [start_day, end_day_exclusive],
+    )
+    return int(row["day_count"] or 0) if row else 0
+
+
+def get_reconciliation_interval_rows(db, start_utc_iso: str, end_utc_iso: str):
+    return db.execute(
+        f"""
+        SELECT
+            {_reconciliation_quality_select()}
+        FROM derived_energy_intervals
+        WHERE recorded_at >= ? AND recorded_at < ?
+        GROUP BY quality
+        ORDER BY quality ASC
+        """,
+        [start_utc_iso, end_utc_iso],
+    )
 
 
 def _ensure_energy_rollups(db):
@@ -748,6 +1129,41 @@ def _ensure_table_columns(db, table_name: str, columns: dict[str, str]):
             )
 
 
+def _backfill_archive_bucket_column(db, table_name: str):
+    count_row = db.fetchone(
+        f"""
+        SELECT COUNT(*) AS count
+        FROM (
+            SELECT 1
+            FROM {table_name}
+            WHERE archive_bucket_local IS NULL
+            LIMIT ?
+        )
+        """,
+        [MAX_AUTOMATIC_ARCHIVE_BUCKET_BACKFILL_ROWS + 1],
+    )
+    missing_count = int(count_row["count"] if count_row else 0)
+    if missing_count == 0:
+        return
+    if missing_count > MAX_AUTOMATIC_ARCHIVE_BUCKET_BACKFILL_ROWS:
+        logging.warning(
+            "Skipping automatic archive-bucket backfill for %s %s rows; "
+            "compaction can still use local_day until a manual migration is run",
+            missing_count,
+            table_name,
+        )
+        return
+
+    bucket_expr = _history_bucket_expr("recorded_minute")
+    db.execute(
+        f"""
+        UPDATE {table_name}
+        SET archive_bucket_local = {bucket_expr}
+        WHERE archive_bucket_local IS NULL
+        """,
+    )
+
+
 def _stale_flow_energy_count(db) -> int:
     row = db.fetchone(
         """
@@ -773,7 +1189,38 @@ def _stale_flow_energy_count(db) -> int:
 
 
 def backfill_flow_energy_columns(db):
+    state = db.fetchone(
+        "SELECT value FROM summary_rollup_state WHERE key = ?",
+        [FLOW_ENERGY_BACKFILL_STATE_KEY],
+    )
+    if state and state["value"] == FLOW_ENERGY_BACKFILL_VERSION:
+        return
+    if state and str(state["value"]).startswith("manual_required"):
+        return
+
+    row_count = db.fetchone(
+        "SELECT COUNT(*) AS count FROM derived_energy_intervals"
+    )
+    interval_count = int(row_count["count"] if row_count else 0)
+    if interval_count > MAX_AUTOMATIC_FLOW_BACKFILL_ROWS:
+        logging.warning(
+            "Skipping automatic flow-energy backfill for %s intervals; "
+            "new intervals will be correct and historical recalculation should be run manually",
+            interval_count,
+        )
+        _set_rollup_state(
+            db,
+            FLOW_ENERGY_BACKFILL_STATE_KEY,
+            f"manual_required:{interval_count}",
+        )
+        return
+
     if _stale_flow_energy_count(db) == 0:
+        _set_rollup_state(
+            db,
+            FLOW_ENERGY_BACKFILL_STATE_KEY,
+            FLOW_ENERGY_BACKFILL_VERSION,
+        )
         return
 
     rows = db.execute(
@@ -873,6 +1320,24 @@ def backfill_flow_energy_columns(db):
         """,
         updates,
     )
+    remaining_stale = _stale_flow_energy_count(db)
+    if remaining_stale:
+        logging.warning(
+            "Flow-energy backfill remains partial for %s intervals; "
+            "historical recalculation should be run manually",
+            remaining_stale,
+        )
+        _set_rollup_state(
+            db,
+            FLOW_ENERGY_BACKFILL_STATE_KEY,
+            f"manual_required:{remaining_stale}",
+        )
+        return
+    _set_rollup_state(
+        db,
+        FLOW_ENERGY_BACKFILL_STATE_KEY,
+        FLOW_ENERGY_BACKFILL_VERSION,
+    )
 
 
 def ensure_schema(db):
@@ -904,6 +1369,7 @@ def ensure_schema(db):
         CREATE TABLE IF NOT EXISTS samples (
             recorded_at TEXT PRIMARY KEY,
             recorded_minute TEXT NOT NULL,
+            archive_bucket_local TEXT,
             local_day TEXT NOT NULL,
             local_month TEXT NOT NULL,
             local_year TEXT NOT NULL,
@@ -984,6 +1450,7 @@ def ensure_schema(db):
         CREATE TABLE IF NOT EXISTS minute_samples (
             recorded_minute TEXT PRIMARY KEY,
             recorded_at TEXT NOT NULL,
+            archive_bucket_local TEXT,
             local_day TEXT NOT NULL,
             local_month TEXT NOT NULL,
             local_year TEXT NOT NULL,
@@ -1114,6 +1581,7 @@ def ensure_schema(db):
             battery_to_load_energy_kwh REAL NOT NULL,
             grid_to_load_energy_kwh REAL NOT NULL,
             grid_to_battery_energy_kwh REAL NOT NULL,
+            quality TEXT NOT NULL DEFAULT 'unknown',
             derived_json TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_energy_local_day
@@ -1210,6 +1678,29 @@ def ensure_schema(db):
         CREATE INDEX IF NOT EXISTS idx_energy_summary_years_peak_pv
             ON energy_summary_years(pv_energy_kwh DESC, local_year ASC);
 
+        CREATE TABLE IF NOT EXISTS energy_quality_summary_days (
+            local_day TEXT NOT NULL,
+            quality TEXT NOT NULL,
+            interval_count INTEGER NOT NULL DEFAULT 0,
+            integrated_interval_count INTEGER NOT NULL DEFAULT 0,
+            dropped_interval_count INTEGER NOT NULL DEFAULT 0,
+            integrated_seconds REAL NOT NULL DEFAULT 0.0,
+            dropped_seconds REAL NOT NULL DEFAULT 0.0,
+            observed_interval_seconds REAL NOT NULL DEFAULT 0.0,
+            max_interval_seconds REAL NOT NULL DEFAULT 0.0,
+            positive_interval_count INTEGER NOT NULL DEFAULT 0,
+            pv_energy_kwh REAL NOT NULL DEFAULT 0.0,
+            load_energy_kwh REAL NOT NULL DEFAULT 0.0,
+            grid_export_energy_kwh REAL NOT NULL DEFAULT 0.0,
+            grid_import_energy_kwh REAL NOT NULL DEFAULT 0.0,
+            grid_to_load_energy_kwh REAL NOT NULL DEFAULT 0.0,
+            grid_to_battery_energy_kwh REAL NOT NULL DEFAULT 0.0,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(local_day, quality)
+        ) WITHOUT ROWID;
+        CREATE INDEX IF NOT EXISTS idx_energy_quality_summary_days_quality
+            ON energy_quality_summary_days(quality, local_day);
+
         CREATE TABLE IF NOT EXISTS summary_rollup_state (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -1287,6 +1778,24 @@ def ensure_schema(db):
     )
     _ensure_table_columns(
         db,
+        "samples",
+        {
+            "archive_bucket_local": "TEXT",
+            "battery_charge_power_w": "REAL",
+            "battery_discharge_power_w": "REAL",
+        },
+    )
+    _ensure_table_columns(
+        db,
+        "minute_samples",
+        {
+            "archive_bucket_local": "TEXT",
+            "battery_charge_power_w": "REAL",
+            "battery_discharge_power_w": "REAL",
+        },
+    )
+    _ensure_table_columns(
+        db,
         "compressed_samples_10m",
         {
             "battery_charge_power_w": "REAL",
@@ -1304,14 +1813,31 @@ def ensure_schema(db):
             "grid_to_battery_energy_kwh": "REAL NOT NULL DEFAULT 0.0",
             "grid_price_eur_per_kwh": "REAL NOT NULL DEFAULT 0.0",
             "feed_in_revenue_eur_per_kwh": "REAL NOT NULL DEFAULT 0.0",
+            "quality": "TEXT NOT NULL DEFAULT 'unknown'",
         },
+    )
+    _backfill_archive_bucket_column(db, "samples")
+    _backfill_archive_bucket_column(db, "minute_samples")
+    db.execute_script(
+        """
+        CREATE INDEX IF NOT EXISTS idx_samples_archive_bucket
+            ON samples(archive_bucket_local);
+        CREATE INDEX IF NOT EXISTS idx_minute_samples_archive_bucket
+            ON minute_samples(archive_bucket_local);
+        CREATE INDEX IF NOT EXISTS idx_energy_recorded_quality
+            ON derived_energy_intervals(recorded_at, quality);
+        """
     )
     backfill_flow_energy_columns(db)
     _ensure_energy_rollups(db)
 
 
-def flatten_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
-    recorded_minute, local_day, local_month, local_year = _local_parts(
+def flatten_snapshot(
+    snapshot: dict[str, Any],
+    *,
+    store_raw_snapshot: bool = False,
+) -> dict[str, Any]:
+    recorded_minute, archive_bucket_local, local_day, local_month, local_year = _local_parts(
         snapshot["recorded_at"]
     )
     inverter_status = snapshot.get("inverter_status") or {}
@@ -1324,6 +1850,7 @@ def flatten_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     row = {
         "recorded_at": snapshot["recorded_at"],
         "recorded_minute": recorded_minute,
+        "archive_bucket_local": archive_bucket_local,
         "local_day": local_day,
         "local_month": local_month,
         "local_year": local_year,
@@ -1404,7 +1931,7 @@ def flatten_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         "flags_json": _json(flags),
         "qpiri_json": _json(qpiri),
         "metadata_json": _json(snapshot.get("metadata") or {}),
-        "raw_snapshot_json": _json(snapshot),
+        "raw_snapshot_json": _json(snapshot if store_raw_snapshot else {}),
     }
     return row
 
@@ -1441,12 +1968,11 @@ def compact_historical_samples(
         retention_hours=retention_hours,
     )
     current_local_day = current_time.astimezone().strftime("%Y-%m-%d")
-    bucket_expr = _history_bucket_expr("recorded_minute")
     rows = db.execute(
         f"""
         WITH eligible AS (
             SELECT
-                {bucket_expr} AS bucket_local,
+                archive_bucket_local AS bucket_local,
                 recorded_at,
                 local_day,
                 local_month,
@@ -1469,7 +1995,7 @@ def compact_historical_samples(
                 pv_power_w,
                 solar_feed_to_grid_power_w
             FROM samples
-            WHERE {bucket_expr} <= ?
+            WHERE archive_bucket_local <= ?
                OR local_day < ?
         ),
         averages AS (
@@ -1600,13 +2126,13 @@ def compact_historical_samples(
         insert_rows,
     )
     db.execute(
-        f"DELETE FROM samples WHERE {bucket_expr} <= ? OR local_day < ?",
+        "DELETE FROM samples WHERE archive_bucket_local <= ? OR local_day < ?",
         [max_bucket_local, current_local_day],
     )
     db.execute(
-        f"""
+        """
         DELETE FROM minute_samples
-        WHERE {_history_bucket_expr('recorded_minute')} <= ?
+        WHERE archive_bucket_local <= ?
            OR local_day < ?
         """,
         [max_bucket_local, current_local_day],
@@ -1619,6 +2145,121 @@ def compact_historical_samples(
             current_time.astimezone() - timedelta(days=1)
         ).strftime("%Y-%m-%d")
         db.execute("DELETE FROM high_res WHERE date < ?", [keep_high_res_from])
+
+
+def _next_local_day(local_day: str) -> str:
+    return (datetime.fromisoformat(local_day) + timedelta(days=1)).date().isoformat()
+
+
+def prune_detailed_energy_intervals(
+    db,
+    reference_time: Optional[datetime] = None,
+    retention_days: int = DEFAULT_ENERGY_INTERVAL_RETENTION_DAYS,
+    max_days: int = DEFAULT_ENERGY_INTERVAL_PRUNE_MAX_DAYS,
+) -> dict[str, Any]:
+    retention_days = int(retention_days or 0)
+    max_days = max(int(max_days or 1), 1)
+    if retention_days <= 0:
+        return {
+            "enabled": False,
+            "cutoff_day": None,
+            "candidate_days": 0,
+            "pruned_days": 0,
+            "pruned_intervals": 0,
+            "limited": False,
+            "skipped_days": [],
+        }
+
+    current_time = reference_time or datetime.now(timezone.utc)
+    cutoff_day = (
+        current_time.astimezone() - timedelta(days=retention_days)
+    ).date().isoformat()
+    candidates = db.execute(
+        """
+        SELECT
+            local_day,
+            MAX(local_month) AS local_month,
+            MAX(local_year) AS local_year,
+            COUNT(*) AS interval_count
+        FROM derived_energy_intervals
+        WHERE local_day < ?
+        GROUP BY local_day
+        ORDER BY local_day ASC
+        LIMIT ?
+        """,
+        [cutoff_day, max_days + 1],
+    )
+    limited = len(candidates) > max_days
+    if limited:
+        candidates = candidates[:max_days]
+    if not candidates:
+        return {
+            "enabled": True,
+            "cutoff_day": cutoff_day,
+            "candidate_days": 0,
+            "pruned_days": 0,
+            "pruned_intervals": 0,
+            "limited": False,
+            "skipped_days": [],
+        }
+
+    pruned_days = []
+    skipped_days = []
+    pruned_intervals = 0
+    months = set()
+    years = set()
+    for candidate in candidates:
+        local_day = candidate["local_day"]
+        with db.transaction():
+            _refresh_day_summary(db, local_day, reference_time=current_time)
+            summary = db.fetchone(
+                f"""
+                SELECT finalized, interval_count
+                FROM {SUMMARY_ROLLUP_TABLES["day"]}
+                WHERE local_day = ?
+                """,
+                [local_day],
+            )
+            quality_summary_days = count_reconciliation_quality_summary_days(
+                db,
+                local_day,
+                _next_local_day(local_day),
+            )
+            summary_ready = (
+                summary is not None
+                and int(summary["finalized"] or 0) == 1
+                and int(summary["interval_count"] or 0) > 0
+                and quality_summary_days > 0
+            )
+            if not summary_ready:
+                skipped_days.append(local_day)
+                continue
+
+            interval_count = int(candidate["interval_count"] or 0)
+            db.execute(
+                "DELETE FROM derived_energy_intervals WHERE local_day = ?",
+                [local_day],
+            )
+            pruned_intervals += interval_count
+            pruned_days.append(local_day)
+            months.add(candidate["local_month"] or local_day[:7])
+            years.add(candidate["local_year"] or local_day[:4])
+
+    with db.transaction():
+        for local_month in sorted(month for month in months if month):
+            _refresh_month_summary(db, local_month, reference_time=current_time)
+        for local_year in sorted(year for year in years if year):
+            _refresh_year_summary(db, local_year, reference_time=current_time)
+
+    return {
+        "enabled": True,
+        "cutoff_day": cutoff_day,
+        "candidate_days": len(candidates),
+        "pruned_days": len(pruned_days),
+        "pruned_intervals": pruned_intervals,
+        "limited": limited,
+        "skipped_days": skipped_days,
+    }
 
 
 def history_samples_for_day(db, local_day: str):
@@ -1643,7 +2284,17 @@ def get_latest_sample(db) -> Optional[dict[str, Any]]:
     row = db.fetchone(
         "SELECT * FROM samples ORDER BY recorded_at DESC LIMIT 1"
     )
-    return dict(row) if row else None
+    if row:
+        return dict(row)
+
+    current = get_current_snapshot(
+        db,
+        include_cumulative=False,
+        include_capabilities=False,
+    )
+    if current and current.get("snapshot"):
+        return flatten_snapshot(current["snapshot"])
+    return None
 
 
 def _power_integral_kwh(previous_value, current_value, interval_seconds):
@@ -1661,12 +2312,35 @@ def _power_integral_kwh(previous_value, current_value, interval_seconds):
     return average_power_w * interval_seconds / 3_600_000.0
 
 
+def _interval_power_quality(*rows: dict[str, Any]) -> str:
+    semantics = {row.get("pv_power_semantics") for row in rows}
+    if SEMANTICS_CACHED in semantics:
+        return "cached"
+    if SEMANTICS_DERIVED in semantics:
+        return "derived"
+    return "exact"
+
+
 def calculate_energy_deltas(
     previous_row: Optional[dict[str, Any]],
     current_row: dict[str, Any],
     max_gap_seconds: float,
     pricing: Optional[dict[str, float]] = None,
+    *,
+    expected_interval_seconds: Optional[float] = None,
+    max_integrated_gap_seconds: Optional[float] = None,
 ) -> dict[str, Any]:
+    max_integrated_gap_seconds = (
+        float(max_integrated_gap_seconds)
+        if max_integrated_gap_seconds is not None
+        else float(max_gap_seconds)
+    )
+    expected_interval_seconds = (
+        float(expected_interval_seconds)
+        if expected_interval_seconds is not None
+        else None
+    )
+
     if previous_row is None:
         return {
             "recorded_at": current_row["recorded_at"],
@@ -1688,15 +2362,29 @@ def calculate_energy_deltas(
             "grid_to_battery_energy_kwh": 0.0,
             "grid_price_eur_per_kwh": max(float((pricing or {}).get("grid_price_eur_per_kwh", 0.0)), 0.0),
             "feed_in_revenue_eur_per_kwh": max(float((pricing or {}).get("feed_in_revenue_eur_per_kwh", 0.0)), 0.0),
-            "derived_json": _json({"reason": "first_sample"}),
+            "quality": "gap_dropped",
+            "derived_json": _json(
+                {
+                    "reason": "first_sample",
+                    "quality": "gap_dropped",
+                    "expected_interval_seconds": expected_interval_seconds,
+                    "max_integrated_gap_seconds": max_integrated_gap_seconds,
+                }
+            ),
         }
 
     previous_at = _utc_from_iso(previous_row["recorded_at"])
     current_at = _utc_from_iso(current_row["recorded_at"])
     interval_seconds = (current_at - previous_at).total_seconds()
-    contiguous = int(0 < interval_seconds <= max_gap_seconds)
+    contiguous = int(0 < interval_seconds <= max_integrated_gap_seconds)
 
     if not contiguous:
+        if interval_seconds <= 0:
+            reason = "time_reversal"
+        elif interval_seconds <= max_gap_seconds:
+            reason = "gap_dropped"
+        else:
+            reason = "gap_or_time_reversal"
         return {
             "recorded_at": current_row["recorded_at"],
             "previous_recorded_at": previous_row["recorded_at"],
@@ -1717,11 +2405,28 @@ def calculate_energy_deltas(
             "grid_to_battery_energy_kwh": 0.0,
             "grid_price_eur_per_kwh": max(float((pricing or {}).get("grid_price_eur_per_kwh", 0.0)), 0.0),
             "feed_in_revenue_eur_per_kwh": max(float((pricing or {}).get("feed_in_revenue_eur_per_kwh", 0.0)), 0.0),
-            "derived_json": _json({"reason": "gap_or_time_reversal"}),
+            "quality": "gap_dropped",
+            "derived_json": _json(
+                {
+                    "reason": reason,
+                    "quality": "gap_dropped",
+                    "expected_interval_seconds": expected_interval_seconds,
+                    "max_integrated_gap_seconds": max_integrated_gap_seconds,
+                    "max_gap_seconds": max_gap_seconds,
+                }
+            ),
         }
 
     previous_flows = calculate_power_flow_breakdown(previous_row)
     current_flows = calculate_power_flow_breakdown(current_row)
+    interval_quality = _interval_power_quality(previous_row, current_row)
+    uses_derived_power = interval_quality == "derived"
+    uses_cached_power = interval_quality == "cached"
+    gap_integrated = bool(
+        expected_interval_seconds and interval_seconds > expected_interval_seconds * 1.5
+    )
+    if gap_integrated:
+        interval_quality = "gap_integrated"
 
     return {
         "recorded_at": current_row["recorded_at"],
@@ -1783,7 +2488,20 @@ def calculate_energy_deltas(
         ),
         "grid_price_eur_per_kwh": max(float((pricing or {}).get("grid_price_eur_per_kwh", 0.0)), 0.0),
         "feed_in_revenue_eur_per_kwh": max(float((pricing or {}).get("feed_in_revenue_eur_per_kwh", 0.0)), 0.0),
-        "derived_json": _json({"reason": "integrated"}),
+        "quality": interval_quality,
+        "derived_json": _json(
+            {
+                "reason": "integrated",
+                "quality": interval_quality,
+                "expected_interval_seconds": expected_interval_seconds,
+                "max_integrated_gap_seconds": max_integrated_gap_seconds,
+                "previous_pv_power_semantics": previous_row.get("pv_power_semantics"),
+                "current_pv_power_semantics": current_row.get("pv_power_semantics"),
+                "uses_derived_power": uses_derived_power,
+                "uses_cached_power": uses_cached_power,
+                "gap_integrated": gap_integrated,
+            }
+        ),
     }
 
 
@@ -1810,8 +2528,9 @@ def insert_energy_delta(db, delta: dict[str, Any]):
             grid_to_battery_energy_kwh,
             grid_price_eur_per_kwh,
             feed_in_revenue_eur_per_kwh,
+            quality,
             derived_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             delta["recorded_at"],
@@ -1833,6 +2552,7 @@ def insert_energy_delta(db, delta: dict[str, Any]):
             delta["grid_to_battery_energy_kwh"],
             delta["grid_price_eur_per_kwh"],
             delta["feed_in_revenue_eur_per_kwh"],
+            delta["quality"],
             delta["derived_json"],
         ],
     )
@@ -2051,10 +2771,10 @@ def _normalized_cached_cumulative(
     reference_time: Optional[datetime] = None,
 ) -> dict[str, Any]:
     reference_time = reference_time or datetime.now(timezone.utc)
-    _, current_day, current_month, current_year = _local_parts(
+    _, _, current_day, current_month, current_year = _local_parts(
         reference_time.isoformat()
     )
-    _, cached_day, cached_month, cached_year = _local_parts(recorded_at)
+    _, _, cached_day, cached_month, cached_year = _local_parts(recorded_at)
     cumulative = cumulative or {}
     return {
         "today": dict(cumulative.get("today") or _empty_period_totals("today"))
@@ -2090,8 +2810,8 @@ def update_current_snapshot(
     cumulative = None
     if previous_current and previous_current["cumulative_json"]:
         previous_cumulative = json.loads(previous_current["cumulative_json"])
-        _, current_day, current_month, current_year = _local_parts(current_recorded_at)
-        _, previous_day, previous_month, previous_year = _local_parts(
+        _, _, current_day, current_month, current_year = _local_parts(current_recorded_at)
+        _, _, previous_day, previous_month, previous_year = _local_parts(
             previous_current["recorded_at"]
         )
 
@@ -2174,24 +2894,61 @@ def record_snapshot(
     max_gap_seconds: float,
     persist_raw_frames: bool,
     pricing: Optional[dict[str, float]] = None,
+    *,
+    expected_interval_seconds: Optional[float] = None,
+    max_integrated_gap_seconds: Optional[float] = None,
+    refresh_rollups: bool = True,
+    run_compaction: bool = True,
+    update_capabilities_row: bool = True,
+    store_sample_raw_snapshot: bool = False,
 ):
-    ensure_schema(db)
-    previous = get_latest_sample(db)
-    row = flatten_snapshot(snapshot)
-    insert_sample(db, row)
-    delta = calculate_energy_deltas(previous, row, max_gap_seconds, pricing)
-    insert_energy_delta(db, delta)
+    with db.transaction():
+        previous = get_latest_sample(db)
+        row = flatten_snapshot(
+            snapshot,
+            store_raw_snapshot=store_sample_raw_snapshot,
+        )
+        insert_sample(db, row)
+        delta = calculate_energy_deltas(
+            previous,
+            row,
+            max_gap_seconds,
+            pricing,
+            expected_interval_seconds=expected_interval_seconds,
+            max_integrated_gap_seconds=max_integrated_gap_seconds,
+        )
+        insert_energy_delta(db, delta)
+        if refresh_rollups:
+            _refresh_summary_rollups_for_snapshot(
+                db,
+                row,
+                previous_row=previous,
+                reference_time=_utc_from_iso(row["recorded_at"]),
+            )
+        if update_capabilities_row:
+            update_capabilities(db, capabilities)
+        if persist_raw_frames:
+            insert_raw_frames(db, row["recorded_at"], raw_frames)
+        update_current_snapshot(
+            db,
+            snapshot,
+            capabilities,
+            pricing=pricing,
+            delta=delta,
+        )
+    if run_compaction:
+        compact_historical_samples(db, reference_time=_utc_from_iso(row["recorded_at"]))
+
+
+def refresh_current_summary_rollups(db, reference_time: Optional[datetime] = None):
+    latest = get_latest_sample(db)
+    if not latest:
+        return
     _refresh_summary_rollups_for_snapshot(
         db,
-        row,
-        previous_row=previous,
-        reference_time=_utc_from_iso(row["recorded_at"]),
+        latest,
+        reference_time=reference_time or _utc_from_iso(latest["recorded_at"]),
     )
-    update_capabilities(db, capabilities)
-    if persist_raw_frames:
-        insert_raw_frames(db, row["recorded_at"], raw_frames)
-    update_current_snapshot(db, snapshot, capabilities, pricing=pricing, delta=delta)
-    compact_historical_samples(db, reference_time=_utc_from_iso(row["recorded_at"]))
 
 
 def get_current_snapshot(
@@ -2437,7 +3194,61 @@ def get_grouped_cumulative(
     }
 
 
-def csv_rows_for_samples(db, start: Optional[str], end: Optional[str]):
+def csv_rows_for_samples(
+    db,
+    start: Optional[str],
+    end: Optional[str],
+    *,
+    limit: int = 100_000,
+):
+    query = (
+        "SELECT recorded_at, operation_mode, fault, ac_input_voltage_v, "
+        "ac_output_voltage_v, ac_output_active_power_w, ac_output_load_percent, "
+        "battery_voltage_v, battery_state_of_charge_percent, battery_charge_current_a, "
+        "battery_discharge_current_a, pv_input_voltage_v, pv_input_current_a, "
+        "pv_power_w, pv_power_semantics, solar_feed_to_grid_power_w "
+        "FROM history_samples"
+    )
+    clauses = []
+    params: list[Any] = []
+    if start:
+        clauses.append("recorded_at >= ?")
+        params.append(start)
+    if end:
+        clauses.append("recorded_at <= ?")
+        params.append(end)
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY recorded_at ASC LIMIT ?"
+    params.append(max(int(limit), 1))
+    return db.execute(query, params)
+
+
+def count_csv_rows_for_samples(
+    db,
+    start: Optional[str],
+    end: Optional[str],
+) -> int:
+    query = "SELECT COUNT(*) AS count FROM history_samples"
+    clauses = []
+    params: list[Any] = []
+    if start:
+        clauses.append("recorded_at >= ?")
+        params.append(start)
+    if end:
+        clauses.append("recorded_at <= ?")
+        params.append(end)
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    row = db.fetchone(query, params)
+    return int(row["count"] or 0) if row else 0
+
+
+def iter_csv_rows_for_samples(
+    db,
+    start: Optional[str],
+    end: Optional[str],
+):
     query = (
         "SELECT recorded_at, operation_mode, fault, ac_input_voltage_v, "
         "ac_output_voltage_v, ac_output_active_power_w, ac_output_load_percent, "
@@ -2457,4 +3268,4 @@ def csv_rows_for_samples(db, start: Optional[str], end: Optional[str]):
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
     query += " ORDER BY recorded_at ASC"
-    return db.execute(query, params)
+    return db.iter_execute(query, params)

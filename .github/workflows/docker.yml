@@ -1,4 +1,4 @@
-name: Docker Image Build
+name: Construction image Docker
 
 on: [push]
 
@@ -8,5 +8,5 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
+      - name: Construire l'image Docker
         run: docker build -t piphocos:ci .

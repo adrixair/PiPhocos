@@ -14,7 +14,7 @@ function getDownloadFilenameFromResponse(response, fallbackName) {
 async function triggerFileDownload(url, fallbackName) {
     const response = await fetch(url, { credentials: "same-origin" });
     if (!response.ok)
-        throw new Error("Download failed with status " + response.status);
+        throw new Error("Téléchargement échoué avec le statut " + response.status);
 
     const blob = await response.blob();
     const downloadUrl = URL.createObjectURL(blob);
@@ -28,7 +28,7 @@ async function triggerFileDownload(url, fallbackName) {
     window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
 }
 
-// Downloads a .csv file from the server
+// Télécharge un fichier .csv depuis le serveur.
 async function downloadCsv() {
     // Get the aggregation bucket
     let bucket = "day";
@@ -65,7 +65,7 @@ async function downloadCsv() {
         await triggerFileDownload(url, fallbackName);
     }
     catch (error) {
-        console.error("CSV download failed.", error);
-        alert("The download failed.");
+        console.error("Téléchargement CSV échoué.", error);
+        alert("Le téléchargement a échoué.");
     }
 }

@@ -11,5 +11,8 @@ def test_template_config_is_readable():
     assert cfg.config_data["phocos"]["unit"] == 0
     assert cfg.config_data["server"]["public_host"] == "localhost"
     assert cfg.config_data["diagnostics"]["enabled"] is False
+    assert cfg.config_data["privacy"]["expose_device_identifiers"] is False
+    assert cfg.config_data["database"]["wal_truncate_threshold_mb"] == 96
+    assert cfg.config_data["database"]["store_sample_raw_snapshot_json"] is False
     assert cfg.config_data["tempo"]["enabled"] is True
     assert cfg.config_data["instance"]["name"] == "PiPhocos"

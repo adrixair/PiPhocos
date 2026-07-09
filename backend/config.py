@@ -24,6 +24,10 @@ DEFAULT_CONFIG = {
         "timeout_s": 2.0,
         "enable_pi30_probe": True,
         "verbose_protocol_logging": False,
+        "qpigs_interval_s": 30.0,
+        "warning_interval_s": 240.0,
+        "static_refresh_interval_s": 86400.0,
+        "max_cached_power_age_s": 12.0,
     },
     "server": {
         "ip": "0.0.0.0",
@@ -34,9 +38,22 @@ DEFAULT_CONFIG = {
     "diagnostics": {
         "enabled": False,
     },
+    "privacy": {
+        "expose_device_identifiers": False,
+    },
+    "database": {
+        "wal_truncate_threshold_mb": 96,
+        "store_sample_raw_snapshot_json": False,
+        "raw_history_retention_hours": 6,
+        "energy_interval_retention_days": 45,
+        "energy_interval_prune_interval_s": 3600,
+        "energy_interval_prune_max_days": 14,
+    },
     "grabber": {
-        "interval_s": 2,
+        "interval_s": 1,
         "max_gap_for_cumulative_s": 180,
+        "max_integrated_gap_s": None,
+        "maintenance_interval_s": 60,
         "stale_after_s": 11,
     },
     "prices": {

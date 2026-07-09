@@ -1,7 +1,7 @@
 {
   "name": "PiPhocos",
   "short_name": "PiPhocos",
-  "description": "Local telemetry, energy history, and production dashboards for Phocos systems.",
+  "description": "Telemetrie locale, historique energetique et tableau de bord pour systemes Phocos.",
   "start_url": "./?view=dashboard",
   "scope": "./",
   "display": "standalone",

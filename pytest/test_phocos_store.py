@@ -1,14 +1,23 @@
 from datetime import datetime, timedelta, timezone
 
 from database import Database
+import phocos_store
 from phocos_store import (
+    FLOW_ENERGY_BACKFILL_STATE_KEY,
+    FLOW_ENERGY_BACKFILL_VERSION,
+    backfill_flow_energy_columns,
     calculate_energy_deltas,
     compact_historical_samples,
+    count_reconciliation_interval_days,
+    count_reconciliation_quality_summary_days,
     ensure_schema,
     get_bucket_totals,
     get_current_snapshot,
     get_grouped_cumulative,
     get_history_series,
+    get_latest_sample,
+    prune_detailed_energy_intervals,
+    refresh_missing_quality_summary_days,
     record_snapshot,
     rebuild_energy_rollups,
 )
@@ -95,6 +104,211 @@ def test_energy_delta_breaks_on_large_gap():
     assert delta["load_energy_kwh"] == 0.0
 
 
+def test_ensure_schema_migrates_archive_bucket_before_creating_indexes(tmp_path):
+    db = Database(str(tmp_path / "legacy_archive_bucket.sqlite"))
+    db.execute_script(
+        """
+        CREATE TABLE samples (
+            recorded_at TEXT PRIMARY KEY,
+            recorded_minute TEXT NOT NULL,
+            local_day TEXT NOT NULL,
+            local_month TEXT NOT NULL,
+            local_year TEXT NOT NULL,
+            pv_power_w REAL,
+            ac_output_active_power_w REAL,
+            solar_feed_to_grid_power_w REAL
+        );
+        CREATE TABLE minute_samples (
+            recorded_minute TEXT PRIMARY KEY,
+            recorded_at TEXT NOT NULL,
+            local_day TEXT NOT NULL,
+            local_month TEXT NOT NULL,
+            local_year TEXT NOT NULL
+        );
+        CREATE TABLE derived_energy_intervals (
+            recorded_at TEXT PRIMARY KEY,
+            previous_recorded_at TEXT,
+            interval_seconds REAL NOT NULL,
+            contiguous INTEGER NOT NULL,
+            local_day TEXT NOT NULL,
+            local_month TEXT NOT NULL,
+            local_year TEXT NOT NULL,
+            pv_energy_kwh REAL NOT NULL,
+            load_energy_kwh REAL NOT NULL,
+            battery_charge_energy_kwh REAL NOT NULL,
+            battery_discharge_energy_kwh REAL NOT NULL,
+            grid_export_energy_kwh REAL NOT NULL,
+            derived_json TEXT
+        );
+        INSERT INTO samples (
+            recorded_at, recorded_minute, local_day, local_month, local_year,
+            pv_power_w, ac_output_active_power_w, solar_feed_to_grid_power_w
+        ) VALUES (
+            '2026-04-04T10:05:00+00:00', '2026-04-04T10:05', '2026-04-04', '2026-04', '2026',
+            500, 250, 0
+        );
+        INSERT INTO minute_samples (
+            recorded_minute, recorded_at, local_day, local_month, local_year
+        ) VALUES (
+            '2026-04-04T10:05', '2026-04-04T10:05:00+00:00', '2026-04-04', '2026-04', '2026'
+        );
+        INSERT INTO derived_energy_intervals (
+            recorded_at, previous_recorded_at, interval_seconds, contiguous,
+            local_day, local_month, local_year,
+            pv_energy_kwh, load_energy_kwh, battery_charge_energy_kwh,
+            battery_discharge_energy_kwh, grid_export_energy_kwh, derived_json
+        ) VALUES (
+            '2026-04-04T10:05:00+00:00', '2026-04-04T10:04:00+00:00', 60.0, 1,
+            '2026-04-04', '2026-04', '2026',
+            0.01, 0.02, 0.0, 0.0, 0.0, '{}'
+        );
+        """
+    )
+
+    ensure_schema(db)
+
+    sample_column = db.fetchone(
+        "SELECT archive_bucket_local FROM samples WHERE recorded_at = ?",
+        ["2026-04-04T10:05:00+00:00"],
+    )
+    minute_column = db.fetchone(
+        "SELECT archive_bucket_local FROM minute_samples WHERE recorded_minute = ?",
+        ["2026-04-04T10:05"],
+    )
+    index_rows = db.execute(
+        """
+        SELECT name FROM sqlite_master
+        WHERE type = 'index'
+          AND name IN (
+              'idx_samples_archive_bucket',
+              'idx_minute_samples_archive_bucket',
+              'idx_energy_recorded_quality'
+          )
+        ORDER BY name
+        """
+    )
+    interval_row = db.fetchone(
+        "SELECT quality FROM derived_energy_intervals WHERE recorded_at = ?",
+        ["2026-04-04T10:05:00+00:00"],
+    )
+
+    assert sample_column["archive_bucket_local"] == "2026-04-04T10:00"
+    assert minute_column["archive_bucket_local"] == "2026-04-04T10:00"
+    assert interval_row["quality"] == "unknown"
+    assert [row["name"] for row in index_rows] == [
+        "idx_energy_recorded_quality",
+        "idx_minute_samples_archive_bucket",
+        "idx_samples_archive_bucket",
+    ]
+
+
+def test_energy_delta_drops_gap_above_integrated_threshold():
+    first = {
+        "recorded_at": "2026-04-04T10:00:00+00:00",
+        "local_day": "2026-04-04",
+        "local_month": "2026-04",
+        "local_year": "2026",
+        "pv_power_w": 500.0,
+        "ac_output_active_power_w": 300.0,
+        "battery_charge_power_w": 0.0,
+        "battery_discharge_power_w": 0.0,
+        "solar_feed_to_grid_power_w": 0.0,
+    }
+    second = {
+        "recorded_at": "2026-04-04T10:00:20+00:00",
+        "local_day": "2026-04-04",
+        "local_month": "2026-04",
+        "local_year": "2026",
+        "pv_power_w": 500.0,
+        "ac_output_active_power_w": 300.0,
+        "battery_charge_power_w": 0.0,
+        "battery_discharge_power_w": 0.0,
+        "solar_feed_to_grid_power_w": 0.0,
+    }
+    delta = calculate_energy_deltas(
+        first,
+        second,
+        max_gap_seconds=180,
+        expected_interval_seconds=2,
+        max_integrated_gap_seconds=6,
+    )
+
+    assert delta["contiguous"] == 0
+    assert delta["pv_energy_kwh"] == 0.0
+    assert delta["load_energy_kwh"] == 0.0
+    assert '"reason": "gap_dropped"' in delta["derived_json"]
+
+
+def test_energy_delta_uses_derived_quality_from_both_bounds():
+    first = {
+        "recorded_at": "2026-04-04T10:00:00+00:00",
+        "local_day": "2026-04-04",
+        "local_month": "2026-04",
+        "local_year": "2026",
+        "pv_power_w": 500.0,
+        "pv_power_semantics": "derived",
+        "ac_output_active_power_w": 300.0,
+        "battery_charge_power_w": 0.0,
+        "battery_discharge_power_w": 0.0,
+        "solar_feed_to_grid_power_w": 0.0,
+    }
+    second = {
+        "recorded_at": "2026-04-04T10:00:01+00:00",
+        "local_day": "2026-04-04",
+        "local_month": "2026-04",
+        "local_year": "2026",
+        "pv_power_w": 600.0,
+        "pv_power_semantics": "exact",
+        "ac_output_active_power_w": 350.0,
+        "battery_charge_power_w": 0.0,
+        "battery_discharge_power_w": 0.0,
+        "solar_feed_to_grid_power_w": 0.0,
+    }
+
+    delta = calculate_energy_deltas(
+        first,
+        second,
+        max_gap_seconds=180,
+        expected_interval_seconds=1,
+        max_integrated_gap_seconds=3,
+    )
+
+    assert delta["quality"] == "derived"
+    assert '"uses_derived_power": true' in delta["derived_json"]
+
+
+def test_energy_delta_uses_cached_quality_from_both_bounds():
+    first = {
+        "recorded_at": "2026-04-04T10:00:00+00:00",
+        "local_day": "2026-04-04",
+        "local_month": "2026-04",
+        "local_year": "2026",
+        "pv_power_w": 500.0,
+        "pv_power_semantics": "exact",
+        "ac_output_active_power_w": 300.0,
+        "battery_charge_power_w": 0.0,
+        "battery_discharge_power_w": 0.0,
+        "solar_feed_to_grid_power_w": 0.0,
+    }
+    second = {
+        **first,
+        "recorded_at": "2026-04-04T10:00:01+00:00",
+        "pv_power_w": 600.0,
+        "pv_power_semantics": "cached",
+    }
+
+    delta = calculate_energy_deltas(
+        first,
+        second,
+        max_gap_seconds=180,
+        expected_interval_seconds=1,
+        max_integrated_gap_seconds=3,
+    )
+
+    assert delta["quality"] == "cached"
+    assert '"uses_cached_power": true' in delta["derived_json"]
+
+
 def test_record_snapshot_builds_current_and_history(tmp_path):
     db = Database(str(tmp_path / "phocos.sqlite"))
     ensure_schema(db)
@@ -121,6 +335,10 @@ def test_record_snapshot_builds_current_and_history(tmp_path):
     current = get_current_snapshot(db)
     assert current is not None
     assert current["snapshot"]["ac_output_active_power_w"] == 300.0
+    interval = db.fetchone(
+        "SELECT quality FROM derived_energy_intervals WHERE interval_seconds > 0"
+    )
+    assert interval["quality"] == "derived"
     assert current["cumulative"]["all_time"]["pv_energy_kwh"] > 0.0
 
     history = get_history_series(db, "pv_power_w", 24)
@@ -129,6 +347,122 @@ def test_record_snapshot_builds_current_and_history(tmp_path):
 
     grouped = get_grouped_cumulative(db, "day", 7)
     assert grouped["items"][-1]["pv_energy_kwh"] > 0.0
+
+
+def test_get_latest_sample_falls_back_to_current_snapshot_after_compaction(tmp_path):
+    db = Database(str(tmp_path / "phocos_latest_fallback.sqlite"))
+    ensure_schema(db)
+    recorded_at = "2026-04-05T12:00:00+00:00"
+
+    record_snapshot(
+        db,
+        _sample(recorded_at, 500.0, 300.0),
+        {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+    )
+    db.execute("DELETE FROM samples")
+
+    latest = get_latest_sample(db)
+
+    assert latest is not None
+    assert latest["recorded_at"] == recorded_at
+    assert latest["pv_power_w"] == 500.0
+
+
+def test_flow_backfill_large_history_requires_manual_rebuild(tmp_path, monkeypatch):
+    db = Database(str(tmp_path / "phocos_backfill_manual.sqlite"))
+    ensure_schema(db)
+    monkeypatch.setattr(phocos_store, "MAX_AUTOMATIC_FLOW_BACKFILL_ROWS", 1)
+    db.execute(
+        "DELETE FROM summary_rollup_state WHERE key = ?",
+        [FLOW_ENERGY_BACKFILL_STATE_KEY],
+    )
+    for index in range(2):
+        recorded_at = f"2026-04-05T12:00:0{index}+00:00"
+        db.execute(
+            """
+            INSERT INTO derived_energy_intervals (
+                recorded_at,
+                previous_recorded_at,
+                interval_seconds,
+                contiguous,
+                local_day,
+                local_month,
+                local_year,
+                pv_energy_kwh,
+                load_energy_kwh,
+                battery_charge_energy_kwh,
+                battery_discharge_energy_kwh,
+                grid_export_energy_kwh,
+                pv_to_load_energy_kwh,
+                pv_to_battery_energy_kwh,
+                battery_to_load_energy_kwh,
+                grid_to_load_energy_kwh,
+                grid_to_battery_energy_kwh,
+                quality
+            ) VALUES (?, ?, 1.0, 1, '2026-04-05', '2026-04', '2026',
+                0.001, 0.001, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 'derived')
+            """,
+            [recorded_at, None if index == 0 else "2026-04-05T12:00:00+00:00"],
+        )
+
+    backfill_flow_energy_columns(db)
+    state = db.fetchone(
+        "SELECT value FROM summary_rollup_state WHERE key = ?",
+        [FLOW_ENERGY_BACKFILL_STATE_KEY],
+    )
+
+    assert state["value"].startswith("manual_required:")
+    assert state["value"] != FLOW_ENERGY_BACKFILL_VERSION
+
+
+def test_schema_materializes_archive_bucket_for_compaction(tmp_path):
+    db = Database(str(tmp_path / "archive_bucket.sqlite"))
+    ensure_schema(db)
+    recorded_at = "2026-04-05T12:34:56+00:00"
+    record_snapshot(
+        db,
+        _sample(recorded_at, 500.0, 300.0),
+        {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+    )
+
+    sample = db.fetchone(
+        "SELECT archive_bucket_local FROM samples WHERE recorded_at = ?",
+        [recorded_at],
+    )
+    indexes = {row["name"] for row in db.execute("PRAGMA index_list(samples)")}
+
+    assert sample["archive_bucket_local"].endswith(":30")
+    assert "idx_samples_archive_bucket" in indexes
+
+
+def test_archive_bucket_backfill_is_bounded(tmp_path, monkeypatch):
+    db = Database(str(tmp_path / "archive_bucket_backfill.sqlite"))
+    ensure_schema(db)
+    for index in range(2):
+        recorded_at = f"2026-04-05T12:3{index}:00+00:00"
+        record_snapshot(
+            db,
+            _sample(recorded_at, 500.0, 300.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+        )
+    db.execute("UPDATE samples SET archive_bucket_local = NULL")
+    monkeypatch.setattr(phocos_store, "MAX_AUTOMATIC_ARCHIVE_BUCKET_BACKFILL_ROWS", 1)
+
+    phocos_store._backfill_archive_bucket_column(db, "samples")
+
+    missing = db.fetchone(
+        "SELECT COUNT(*) AS count FROM samples WHERE archive_bucket_local IS NULL"
+    )
+    assert missing["count"] == 2
 
 
 def test_get_current_snapshot_reuses_stored_cumulative_totals(tmp_path):
@@ -465,3 +799,124 @@ def test_get_current_snapshot_can_skip_heavy_sections(tmp_path):
     assert current["recorded_at"] == recorded_at
     assert "cumulative" not in current
     assert "capabilities" not in current
+
+
+def test_sample_raw_snapshot_json_is_lightweight_by_default(tmp_path):
+    db = Database(str(tmp_path / "phocos_raw_snapshot.sqlite"))
+    ensure_schema(db)
+
+    record_snapshot(
+        db,
+        _sample("2026-04-05T12:00:00+00:00", 600.0, 250.0),
+        {"QPGS0": {"supported": True, "checked_at": "2026-04-05T12:00:00+00:00", "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+    )
+    raw = db.fetchone("SELECT raw_snapshot_json FROM samples")
+    assert raw["raw_snapshot_json"] == "{}"
+
+    record_snapshot(
+        db,
+        _sample("2026-04-05T12:00:01+00:00", 610.0, 260.0),
+        {"QPGS0": {"supported": True, "checked_at": "2026-04-05T12:00:01+00:00", "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+        store_sample_raw_snapshot=True,
+    )
+    raw = db.fetchone(
+        "SELECT raw_snapshot_json FROM samples WHERE recorded_at = ?",
+        ["2026-04-05T12:00:01+00:00"],
+    )
+    assert "TEST-DEVICE-0001" in raw["raw_snapshot_json"]
+
+
+def test_missing_reconciliation_quality_summary_days_can_be_refreshed(tmp_path):
+    db = Database(str(tmp_path / "phocos_quality_summary_refresh.sqlite"))
+    ensure_schema(db)
+
+    for recorded_at in (
+        "2026-04-05T12:00:00+00:00",
+        "2026-04-05T12:00:01+00:00",
+        "2026-04-07T12:00:00+00:00",
+        "2026-04-07T12:00:01+00:00",
+    ):
+        record_snapshot(
+            db,
+            _sample(recorded_at, 600.0, 250.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+        )
+
+    db.execute("DELETE FROM energy_quality_summary_days")
+    assert count_reconciliation_quality_summary_days(
+        db,
+        "2026-04-05",
+        "2026-04-08",
+    ) == 0
+    assert count_reconciliation_interval_days(db, "2026-04-05", "2026-04-08") == 2
+
+    result = refresh_missing_quality_summary_days(
+        db,
+        "2026-04-05",
+        "2026-04-08",
+    )
+
+    assert result == {"refreshed_days": 2, "limited": False}
+    assert count_reconciliation_quality_summary_days(
+        db,
+        "2026-04-05",
+        "2026-04-08",
+    ) == 2
+
+
+def test_detailed_energy_intervals_are_pruned_only_after_rollups(tmp_path):
+    db = Database(str(tmp_path / "phocos_interval_prune.sqlite"))
+    ensure_schema(db)
+
+    reference_time = datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc)
+    old_day_start = datetime(2026, 5, 1, 12, 0, tzinfo=timezone.utc)
+    recent_day_start = datetime(2026, 6, 20, 12, 0, tzinfo=timezone.utc)
+
+    for base in (old_day_start, recent_day_start):
+        for offset in (0, 1):
+            recorded_at = (base + timedelta(seconds=offset)).isoformat()
+            record_snapshot(
+                db,
+                _sample(recorded_at, 600.0, 3600.0),
+                {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+                [],
+                max_gap_seconds=180,
+                persist_raw_frames=False,
+                expected_interval_seconds=1,
+                max_integrated_gap_seconds=3,
+            )
+
+    report = prune_detailed_energy_intervals(
+        db,
+        reference_time=reference_time,
+        retention_days=45,
+        max_days=10,
+    )
+
+    assert report["enabled"] is True
+    assert report["pruned_days"] == 1
+    assert report["pruned_intervals"] > 0
+    assert report["skipped_days"] == []
+    assert db.fetchone(
+        "SELECT COUNT(*) AS count FROM derived_energy_intervals WHERE local_day = ?",
+        ["2026-05-01"],
+    )["count"] == 0
+    assert db.fetchone(
+        "SELECT COUNT(*) AS count FROM derived_energy_intervals WHERE local_day = ?",
+        ["2026-06-20"],
+    )["count"] > 0
+    assert count_reconciliation_quality_summary_days(
+        db,
+        "2026-05-01",
+        "2026-05-02",
+    ) == 1
+    assert get_bucket_totals(db, "day", "2026-05-01")["interval_count"] > 0

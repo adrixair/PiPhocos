@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
     <meta charset="utf-8" />
@@ -20,32 +20,19 @@
     <link href="css/styles.css?build=20260404b" rel="stylesheet" />
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
-    <link href="css/custom.css?build=20260611d" rel="stylesheet" />
+    <link href="css/custom.css?build=20260708a" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
     <nav class="sb-topnav navbar navbar-expand app-topbar">
-        <button class="app-icon-button order-0 me-2" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
+        <button class="app-icon-button order-0 me-2" id="sidebarToggle" type="button" aria-label="Ouvrir le menu">
             <i class="fas fa-bars"></i>
         </button>
         <a class="navbar-brand app-brand" href="javascript:showViewDashboard();">
             <img class="app-brand-logo" src="assets/phocos-logo.png?build=20260404c" alt="PiPhocos" />
             <span class="visually-hidden" id="instance-name">PiPhocos</span>
         </a>
-        <div class="app-topbar-actions ms-auto">
-            <div class="dropdown">
-                <button class="app-control-button dropdown-toggle" id="navbar_dropdown_language" type="button"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    Language
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end app-dropdown" aria-labelledby="navbar_dropdown_language">
-                    <li><a class="dropdown-item" id="navbar_dropdown_language_en" href="javascript:switchLanguageToEnglish();"
-                            aria-current="false">English</a></li>
-                    <li><a class="dropdown-item" id="navbar_dropdown_language_fr" href="javascript:switchLanguageToFrench();"
-                            aria-current="false">Français</a></li>
-                </ul>
-            </div>
-        </div>
+        <div class="app-topbar-actions ms-auto"></div>
     </nav>
 
     <div id="layoutSidenav">
@@ -53,56 +40,56 @@
             <nav class="sb-sidenav accordion sb-sidenav-dark app-sidebar" id="sidenavAccordion">
                 <div class="sb-sidenav-menu">
                     <div class="nav app-nav">
-                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_overview">Overview</div>
+                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_overview">Vue d'ensemble</div>
                         <a class="nav-link app-nav-link" data-nav-target="dashboard"
                             href="javascript:showViewDashboard();collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-grip"></i></div>
-                            <div id="sidebar_dashboard">Dashboard</div>
+                            <div id="sidebar_dashboard">Tableau de bord</div>
                         </a>
                         <a class="nav-link app-nav-link" data-nav-target="statistics"
                             href="javascript:showViewStatistics();collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-chart-simple"></i></div>
-                            <div id="sidebar_statistics">Statistics</div>
+                            <div id="sidebar_statistics">Statistiques</div>
                         </a>
                         <a class="nav-link app-nav-link" data-nav-target="today"
                             href="javascript:showViewHistory(histories.TODAY);collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-star"></i></div>
-                            <div id="sidebar_today">Today</div>
+                            <div id="sidebar_today">Aujourd'hui</div>
                         </a>
 
-                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_history">History</div>
+                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_history">Historique</div>
                         <a class="nav-link app-nav-link" data-nav-target="day"
                             href="javascript:showViewHistory(histories.DAY);collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-calendar-day"></i></div>
-                            <div id="sidebar_by_day">By Day</div>
+                            <div id="sidebar_by_day">Par jour</div>
                         </a>
                         <a class="nav-link app-nav-link" data-nav-target="month"
                             href="javascript:showViewHistory(histories.MONTH);collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-calendar-days"></i></div>
-                            <div id="sidebar_by_month">By Month</div>
+                            <div id="sidebar_by_month">Par mois</div>
                         </a>
                         <a class="nav-link app-nav-link" data-nav-target="year"
                             href="javascript:showViewHistory(histories.YEAR);collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-calendar-week"></i></div>
-                            <div id="sidebar_by_year">By Year</div>
+                            <div id="sidebar_by_year">Par année</div>
                         </a>
                         <a class="nav-link app-nav-link" data-nav-target="all"
                             href="javascript:showViewHistory(histories.ALL);collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-calendar"></i></div>
-                            <div id="sidebar_all_time">All Time</div>
+                            <div id="sidebar_all_time">Total</div>
                         </a>
 
-                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_misc">Misc</div>
+                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_misc">Divers</div>
                         <a class="nav-link app-nav-link" data-nav-target="csv"
                             href="javascript:showViewCsv();collapseSidebar();">
                             <div class="sb-nav-link-icon"><i class="fas fa-file-csv"></i></div>
-                            <div id="sidebar_csv">CSV Download</div>
+                            <div id="sidebar_csv">Téléchargement CSV</div>
                         </a>
                     </div>
                 </div>
                 <div class="app-sidebar-footer">
                     <div class="app-sidebar-status-stack">
-                        <div class="app-telemetry-status" id="sidebar_live_telemetry" aria-live="polite">Live telemetry</div>
+                        <div class="app-telemetry-status" id="sidebar_live_telemetry" aria-live="polite">Phocos</div>
                         <div class="app-sidebar-detail" id="telemetry_detail" aria-live="polite">...</div>
                     </div>
                 </div>
@@ -114,9 +101,9 @@
                 <div class="container-fluid px-4 app-view" id="view_dashboard">
                     <div class="app-view-head">
                         <div>
-                            <h1 class="app-view-title" id="headline_dashboard">Dashboard</h1>
+                            <h1 class="app-view-title" id="headline_dashboard">Tableau de bord</h1>
                             <p class="app-view-subtitle">
-                                <span id="dashboard_subtitle">Last updated:</span>
+                                <span id="dashboard_subtitle">Dernière mise à jour : </span>
                                 <span id="dashboard_subtitle_time">...</span>
                             </p>
                         </div>
@@ -124,7 +111,7 @@
 
                     <section class="app-panel power-flow-panel">
                         <div class="app-panel-head">
-                            <span class="app-panel-title" id="dash_card_live_flow">Live flow</span>
+                            <span class="app-panel-title" id="dash_card_live_flow">Flux en direct</span>
                         </div>
                         <div class="app-panel-body">
                             <div class="power-flow-map" id="dashboard_power_flow">
@@ -175,7 +162,7 @@
                                         </div>
                                     </div>
                                     <div class="power-flow-node-copy">
-                                        <span class="power-flow-node-label" id="dash_flow_node_solar">Solar</span>
+                                        <span class="power-flow-node-label" id="dash_flow_node_solar">Solaire</span>
                                         <span class="power-flow-node-value" id="dash_flow_value_solar">--</span>
                                         <span class="power-flow-node-meta" id="dash_flow_meta_solar">--</span>
                                     </div>
@@ -188,7 +175,7 @@
                                         </div>
                                     </div>
                                     <div class="power-flow-node-copy">
-                                        <span class="power-flow-node-label" id="dash_flow_node_grid">Grid</span>
+                                        <span class="power-flow-node-label" id="dash_flow_node_grid">Réseau</span>
                                         <span class="power-flow-node-value" id="dash_flow_value_grid">--</span>
                                         <span class="power-flow-node-meta" id="dash_flow_meta_grid">--</span>
                                     </div>
@@ -201,7 +188,7 @@
                                         </div>
                                     </div>
                                     <div class="power-flow-node-copy">
-                                        <span class="power-flow-node-label" id="dash_flow_node_hub">Inverter</span>
+                                        <span class="power-flow-node-label" id="dash_flow_node_hub">Onduleur</span>
                                         <span class="power-flow-node-value" id="dash_flow_value_hub">--</span>
                                         <span class="power-flow-node-meta" id="dash_flow_meta_hub">--</span>
                                     </div>
@@ -214,7 +201,7 @@
                                         </div>
                                     </div>
                                     <div class="power-flow-node-copy">
-                                        <span class="power-flow-node-label" id="dash_flow_node_home">Home</span>
+                                        <span class="power-flow-node-label" id="dash_flow_node_home">Maison</span>
                                         <span class="power-flow-node-value" id="dash_flow_value_home">--</span>
                                         <span class="power-flow-node-meta" id="dash_flow_meta_home">--</span>
                                     </div>
@@ -229,7 +216,7 @@
                                         </div>
                                     </div>
                                     <div class="power-flow-node-copy">
-                                        <span class="power-flow-node-label" id="dash_flow_node_battery">Battery</span>
+                                        <span class="power-flow-node-label" id="dash_flow_node_battery">Batterie</span>
                                         <span class="power-flow-node-value" id="dash_flow_value_battery">--</span>
                                         <span class="power-flow-node-meta" id="dash_flow_meta_battery">--</span>
                                     </div>
@@ -241,7 +228,7 @@
                     <div class="dashboard-grid">
                         <section class="app-panel metric-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="dash_card_current">Current</span>
+                                <span class="app-panel-title" id="dash_card_current">Réseau et maison</span>
                             </div>
                             <div class="app-panel-body">
                                 <div id="dash_current_table"></div>
@@ -250,7 +237,7 @@
 
                         <section class="app-panel metric-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="dash_card_battery">Battery</span>
+                                <span class="app-panel-title" id="dash_card_battery">Batterie</span>
                             </div>
                             <div class="app-panel-body">
                                 <div id="dash_battery_table"></div>
@@ -259,7 +246,7 @@
 
                         <section class="app-panel metric-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="dash_card_today">Today</span>
+                                <span class="app-panel-title" id="dash_card_today">Solaire et charge</span>
                             </div>
                             <div class="app-panel-body">
                                 <div id="dash_solar_table"></div>
@@ -268,7 +255,7 @@
 
                         <section class="app-panel metric-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="dash_card_all_time">All Time</span>
+                                <span class="app-panel-title" id="dash_card_all_time">Appareil et état</span>
                             </div>
                             <div class="app-panel-body">
                                 <div id="dash_device_table"></div>
@@ -277,7 +264,7 @@
 
                         <section class="app-panel metric-panel dashboard-settings-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="dash_card_phocos_settings">Phocos parameters</span>
+                                <span class="app-panel-title" id="dash_card_phocos_settings">Paramètres Phocos</span>
                             </div>
                             <div class="app-panel-body">
                                 <div id="dash_phocos_parameters_table"></div>
@@ -287,8 +274,8 @@
 
                     <section class="app-panel chart-panel">
                         <div class="app-panel-head app-panel-head-between">
-                            <span class="app-panel-title" id="dash_card_24h">Latest Data</span>
-                            <div class="app-segmented-control" aria-label="Dashboard time span">
+                            <span class="app-panel-title" id="dash_card_24h">Dernières données</span>
+                            <div class="app-segmented-control" aria-label="Periode du graphique">
                                 <button class="app-segmented-button" type="button" data-dashboard-hours="2"
                                     onclick="changeDashboardGraphTimeSpan(2);">2h</button>
                                 <button class="app-segmented-button" type="button" data-dashboard-hours="4"
@@ -310,8 +297,8 @@
                 <div class="container-fluid px-4 app-view" id="view_statistics" data-default-display="block">
                     <div class="app-view-head">
                         <div>
-                            <h1 class="app-view-title" id="headline_statistics">Statistics</h1>
-                            <p class="app-view-subtitle">Production overview and runtime reference.</p>
+                            <h1 class="app-view-title" id="headline_statistics">Statistiques</h1>
+                            <p class="app-view-subtitle">Vue de production et référence de fonctionnement.</p>
                             <div class="app-view-status" id="statistics_status" data-default-display="inline-flex"
                                 style="display: none;" role="status" aria-live="polite"></div>
                         </div>
@@ -320,7 +307,7 @@
                     <div class="stats-hero-grid">
                         <section class="app-panel stat-hero-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="stats_card_highest_prod">Highest Production</span>
+                                <span class="app-panel-title" id="stats_card_highest_prod">Production maximale</span>
                             </div>
                             <div class="app-panel-body text-center">
                                 <p class="stat-hero-value" id="stats_highest_prod_value">...</p>
@@ -330,7 +317,7 @@
 
                         <section class="app-panel stat-hero-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="stats_card_best_day">Best Day</span>
+                                <span class="app-panel-title" id="stats_card_best_day">Meilleur jour</span>
                             </div>
                             <div class="app-panel-body text-center">
                                 <p class="stat-hero-value" id="stats_best_day_value">...</p>
@@ -340,7 +327,7 @@
 
                         <section class="app-panel stat-hero-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="stats_card_best_month">Best Month</span>
+                                <span class="app-panel-title" id="stats_card_best_month">Meilleur mois</span>
                             </div>
                             <div class="app-panel-body text-center">
                                 <p class="stat-hero-value" id="stats_best_month_value">...</p>
@@ -350,7 +337,7 @@
 
                         <section class="app-panel stat-hero-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="stats_card_best_year">Best Year</span>
+                                <span class="app-panel-title" id="stats_card_best_year">Meilleure année</span>
                             </div>
                             <div class="app-panel-body text-center">
                                 <p class="stat-hero-value" id="stats_best_year_value">...</p>
@@ -362,14 +349,14 @@
                     <div class="stats-detail-grid">
                         <section class="app-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="stats_card_averages">Averages</span>
+                                <span class="app-panel-title" id="stats_card_averages">Moyennes</span>
                             </div>
                             <div class="app-panel-body">
                                 <table class="table table-borderless app-data-table">
                                     <tbody>
                                         <tr>
                                             <td><i class="fas fa-solar-panel me-1"></i></td>
-                                            <td id="statistics_text_avg_daily_prod">Average daily production</td>
+                                            <td id="statistics_text_avg_daily_prod">Production quotidienne moyenne</td>
                                             <td class="text-end" id="statistics_value_avg_daily_prod">...</td>
                                             <td class="text-end app-unit-cell">kWh</td>
                                         </tr>
@@ -380,19 +367,19 @@
 
                         <section class="app-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="stats_card_runtime">Runtime</span>
+                                <span class="app-panel-title" id="stats_card_runtime">Fonctionnement</span>
                             </div>
                             <div class="app-panel-body">
                                 <table class="table table-borderless app-data-table">
                                     <tbody>
                                         <tr>
                                             <td><i class="fas fa-flag-checkered me-1"></i></td>
-                                            <td id="statistics_text_start_date">Date of commissioning</td>
+                                            <td id="statistics_text_start_date">Date de mise en service</td>
                                             <td class="text-end" id="statistics_value_start_date">...</td>
                                         </tr>
                                         <tr>
                                             <td><i class="fas fa-clock me-1"></i></td>
-                                            <td id="statistics_text_runtime">Total runtime</td>
+                                            <td id="statistics_text_runtime">Durée totale de fonctionnement</td>
                                             <td class="text-end" id="statistics_value_runtime">...</td>
                                         </tr>
                                     </tbody>
@@ -406,7 +393,7 @@
                     <div class="app-view-head">
                         <div>
                             <h1 class="app-view-title" id="headline_history">...</h1>
-                            <p class="app-view-subtitle">Filter a period and inspect production, consumption and daily curves.</p>
+                            <p class="app-view-subtitle">Filtrer une période et inspecter production, consommation et courbes journalières.</p>
                             <div class="app-view-status" id="history_status" data-default-display="inline-flex"
                                 style="display: none;" role="status" aria-live="polite"></div>
                         </div>
@@ -426,18 +413,18 @@
                                 <div id="selection_month">
                                     <select class="form-select app-select" id="selection_month2"
                                         onchange="onHistorySelectorChange();">
-                                        <option value="1" id="cbx_month_1">January</option>
-                                        <option value="2" id="cbx_month_2">February</option>
-                                        <option value="3" id="cbx_month_3">March</option>
-                                        <option value="4" id="cbx_month_4">April</option>
-                                        <option value="5" id="cbx_month_5">May</option>
-                                        <option value="6" id="cbx_month_6">June</option>
-                                        <option value="7" id="cbx_month_7">July</option>
-                                        <option value="8" id="cbx_month_8">August</option>
-                                        <option value="9" id="cbx_month_9">September</option>
-                                        <option value="10" id="cbx_month_10">October</option>
-                                        <option value="11" id="cbx_month_11">November</option>
-                                        <option value="12" id="cbx_month_12">December</option>
+                                        <option value="1" id="cbx_month_1">Janvier</option>
+                                        <option value="2" id="cbx_month_2">Février</option>
+                                        <option value="3" id="cbx_month_3">Mars</option>
+                                        <option value="4" id="cbx_month_4">Avril</option>
+                                        <option value="5" id="cbx_month_5">Mai</option>
+                                        <option value="6" id="cbx_month_6">Juin</option>
+                                        <option value="7" id="cbx_month_7">Juillet</option>
+                                        <option value="8" id="cbx_month_8">Août</option>
+                                        <option value="9" id="cbx_month_9">Septembre</option>
+                                        <option value="10" id="cbx_month_10">Octobre</option>
+                                        <option value="11" id="cbx_month_11">Novembre</option>
+                                        <option value="12" id="cbx_month_12">Décembre</option>
                                     </select>
                                 </div>
                                 <div id="selection_day">
@@ -456,14 +443,14 @@
                         <div class="history-summary-grid">
                             <section class="app-panel">
                                 <div class="app-panel-head">
-                                    <span class="app-panel-title" id="history_card_usage">Usage of Produced Energy</span>
+                                    <span class="app-panel-title" id="history_card_usage">Usage de l'énergie produite</span>
                                 </div>
                                 <div class="app-panel-body">
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
                                             <tr class="fw-semibold">
                                                 <td><i class="fas fa-solar-panel me-1"></i></td>
-                                                <td id="history_text_produced">Energy produced</td>
+                                                <td id="history_text_produced">Énergie produite</td>
                                                 <td class="text-end" id="history_stat_produced">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
@@ -476,19 +463,19 @@
                                         <tbody>
                                             <tr>
                                                 <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
-                                                <td id="history_text_fedin">Fed into the grid</td>
+                                                <td id="history_text_fedin">Vers le réseau</td>
                                                 <td class="text-end" id="history_stat_fedin">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
                                             <tr>
                                                 <td><i class="fas fa-lightbulb me-1"></i></td>
-                                                <td id="history_text_self_consumed">Used by house</td>
+                                                <td id="history_text_self_consumed">Utilisée par la maison</td>
                                                 <td class="text-end" id="history_stat_self_consumed">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
                                             <tr>
                                                 <td><i class="fas fa-battery-half me-1"></i></td>
-                                                <td id="history_text_battery_charge">To battery (est.)</td>
+                                                <td id="history_text_battery_charge">Vers la batterie (est.)</td>
                                                 <td class="text-end" id="history_stat_battery_charge">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
@@ -499,14 +486,14 @@
 
                             <section class="app-panel">
                                 <div class="app-panel-head">
-                                    <span class="app-panel-title" id="history_card_consumption">Power Consumption</span>
+                                    <span class="app-panel-title" id="history_card_consumption">Consommation électrique</span>
                                 </div>
                                 <div class="app-panel-body">
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
                                             <tr class="fw-semibold">
                                                 <td><i class="fas fa-lightbulb me-1"></i></td>
-                                                <td id="history_text_consumption_total">Total consumption</td>
+                                                <td id="history_text_consumption_total">Consommation totale</td>
                                                 <td class="text-end" id="history_stat_consumption_total">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
@@ -519,19 +506,19 @@
                                         <tbody>
                                             <tr>
                                                 <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
-                                                <td id="history_text_consumption_grid">Consumption from grid</td>
+                                                <td id="history_text_consumption_grid">Depuis le réseau</td>
                                                 <td class="text-end" id="history_stat_consumption_grid">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
                                             <tr>
                                                 <td><i class="fas fa-solar-panel me-1"></i></td>
-                                                <td id="history_text_consumption_self">Consumption from PV</td>
+                                                <td id="history_text_consumption_self">Depuis le solaire (est.)</td>
                                                 <td class="text-end" id="history_stat_consumption_self">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
                                     <tr>
                                                 <td><i class="fas fa-battery-half me-1"></i></td>
-                                                <td id="history_text_consumption_battery">Consumption from battery</td>
+                                                <td id="history_text_consumption_battery">Depuis la batterie</td>
                                                 <td class="text-end" id="history_stat_consumption_battery">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
@@ -543,14 +530,14 @@
                             <div class="history-side-stack">
                                 <section class="app-panel">
                                     <div class="app-panel-head">
-                                        <span class="app-panel-title" id="history_card_autarky">Autarky</span>
+                                        <span class="app-panel-title" id="history_card_autarky">Autonomie</span>
                                     </div>
                                     <div class="app-panel-body">
                                         <table class="table table-borderless app-data-table">
                                             <tbody>
                                                 <tr>
                                                     <td><i class="fas fa-leaf me-1"></i></td>
-                                                    <td id="history_text_autarky">Autarky</td>
+                                                    <td id="history_text_autarky">Autonomie atteinte</td>
                                                     <td class="text-end" id="history_stat_autarky">0</td>
                                                     <td class="text-end app-unit-cell">%</td>
                                                 </tr>
@@ -561,20 +548,20 @@
 
                                 <section class="app-panel">
                                     <div class="app-panel-head">
-                                        <span class="app-panel-title" id="history_card_earned">Earnings</span>
+                                        <span class="app-panel-title" id="history_card_earned">Gains</span>
                                     </div>
                                     <div class="app-panel-body">
                                         <table class="table table-borderless app-data-table">
                                             <tbody>
                                                 <tr>
                                                     <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
-                                                    <td id="history_text_earned_feedin">Earned with feed-in</td>
+                                                    <td id="history_text_earned_feedin">Gain grâce à l'injection</td>
                                                     <td class="text-end" id="history_stat_earned_feedin">0.0</td>
                                                     <td class="text-end app-unit-cell">€</td>
                                                 </tr>
                                                 <tr>
                                                     <td><i class="fas fa-lightbulb me-1"></i></td>
-                                                    <td id="history_text_earned_self">Saved via self-consumption</td>
+                                                    <td id="history_text_earned_self">Économie grâce à l'autoconsommation</td>
                                                     <td class="text-end" id="history_stat_earned_self">0.0</td>
                                                     <td class="text-end app-unit-cell">€</td>
                                                 </tr>
@@ -595,7 +582,7 @@
                             <div class="history-details-grid">
                                 <section class="app-panel">
                                     <div class="app-panel-head">
-                                        <span class="app-panel-title" id="history_card_graph_production_text">Details</span>
+                                        <span class="app-panel-title" id="history_card_graph_production_text">Détails de la production</span>
                                     </div>
                                     <div class="app-panel-body">
                                         <div class="chart-shell chart-shell-medium" id="history_chart_details_production_shell">
@@ -606,7 +593,7 @@
 
                                 <section class="app-panel">
                                     <div class="app-panel-head">
-                                        <span class="app-panel-title" id="history_card_graph_consumption_text">Details</span>
+                                        <span class="app-panel-title" id="history_card_graph_consumption_text">Détails de la consommation</span>
                                     </div>
                                     <div class="app-panel-body">
                                         <div class="chart-shell chart-shell-medium" id="history_chart_details_consumption_shell">
@@ -621,7 +608,7 @@
                     <div id="history_card_high_res">
                         <section class="app-panel">
                             <div class="app-panel-head">
-                                <span class="app-panel-title" id="history_card_high_res_data_text">Course of the day</span>
+                                <span class="app-panel-title" id="history_card_high_res_data_text">Courbe du jour</span>
                             </div>
                             <div class="app-panel-body">
                                 <div class="chart-shell chart-shell-history" id="history_chart_high_res_shell">
@@ -634,7 +621,7 @@
                     <div id="row_error_banner" data-default-display="block" style="display: none;">
                         <div class="alert app-alert" role="alert">
                             <i class="fas fa-circle-info me-1"></i>
-                            <span id="info_no_data">No data is available for the selected time span.</span>
+                            <span id="info_no_data">Aucune donnée n'est disponible pour la période sélectionnée.</span>
                         </div>
                     </div>
                 </div>
@@ -642,8 +629,8 @@
                 <div class="container-fluid px-4 app-view" id="view_csv" data-default-display="block">
                     <div class="app-view-head">
                         <div>
-                            <h1 class="app-view-title" id="headline_csv">CSV Download</h1>
-                            <p class="app-view-subtitle" id="csv_subtitle">...</p>
+                            <h1 class="app-view-title" id="headline_csv">Téléchargement CSV</h1>
+                            <p class="app-view-subtitle" id="csv_subtitle">Télécharger les rapports .csv</p>
                         </div>
                     </div>
 
@@ -651,27 +638,27 @@
                         <div class="app-panel-body">
                             <div class="csv-grid">
                                 <div>
-                                    <label class="app-section-label" id="csv_label_time_range">Time range:</label>
+                                    <label class="app-section-label" id="csv_label_time_range">Période :</label>
                                     <div class="app-toggle-group">
                                         <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_day"
                                             autocomplete="off" checked onchange="updateCsvDateSelector();">
                                         <label class="app-toggle-label" for="csv_range_rad_day"
-                                            id="csv_range_rad_lbl_day">One day</label>
+                                            id="csv_range_rad_lbl_day">Un jour</label>
 
                                         <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_month"
                                             autocomplete="off" onchange="updateCsvDateSelector();">
                                         <label class="app-toggle-label" for="csv_range_rad_month"
-                                            id="csv_range_rad_lbl_month">One month</label>
+                                            id="csv_range_rad_lbl_month">Un mois</label>
 
                                         <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_year"
                                             autocomplete="off" onchange="updateCsvDateSelector();">
                                         <label class="app-toggle-label" for="csv_range_rad_year"
-                                            id="csv_range_rad_lbl_year">One year</label>
+                                            id="csv_range_rad_lbl_year">Une année</label>
 
                                         <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_all"
                                             autocomplete="off" onchange="updateCsvDateSelector();">
                                         <label class="app-toggle-label" for="csv_range_rad_all"
-                                            id="csv_range_rad_lbl_all">All time</label>
+                                            id="csv_range_rad_lbl_all">Total</label>
                                     </div>
                                 </div>
 
@@ -683,18 +670,18 @@
                                     <div id="csv_selection_month">
                                         <select class="form-select app-select" id="csv_selection_month2"
                                             onchange="onCsvSelectorChange();">
-                                            <option value="1" id="csv_cbx_month_1">January</option>
-                                            <option value="2" id="csv_cbx_month_2">February</option>
-                                            <option value="3" id="csv_cbx_month_3">March</option>
-                                            <option value="4" id="csv_cbx_month_4">April</option>
-                                            <option value="5" id="csv_cbx_month_5">May</option>
-                                            <option value="6" id="csv_cbx_month_6">June</option>
-                                            <option value="7" id="csv_cbx_month_7">July</option>
-                                            <option value="8" id="csv_cbx_month_8">August</option>
-                                            <option value="9" id="csv_cbx_month_9">September</option>
-                                            <option value="10" id="csv_cbx_month_10">October</option>
-                                            <option value="11" id="csv_cbx_month_11">November</option>
-                                            <option value="12" id="csv_cbx_month_12">December</option>
+                                            <option value="1" id="csv_cbx_month_1">Janvier</option>
+                                            <option value="2" id="csv_cbx_month_2">Février</option>
+                                            <option value="3" id="csv_cbx_month_3">Mars</option>
+                                            <option value="4" id="csv_cbx_month_4">Avril</option>
+                                            <option value="5" id="csv_cbx_month_5">Mai</option>
+                                            <option value="6" id="csv_cbx_month_6">Juin</option>
+                                            <option value="7" id="csv_cbx_month_7">Juillet</option>
+                                            <option value="8" id="csv_cbx_month_8">Août</option>
+                                            <option value="9" id="csv_cbx_month_9">Septembre</option>
+                                            <option value="10" id="csv_cbx_month_10">Octobre</option>
+                                            <option value="11" id="csv_cbx_month_11">Novembre</option>
+                                            <option value="12" id="csv_cbx_month_12">Décembre</option>
                                         </select>
                                     </div>
                                     <div id="csv_selection_day">
@@ -704,29 +691,29 @@
                                 </div>
 
                                 <div>
-                                    <label class="app-section-label" id="csv_label_resolution">Resolution:</label>
+                                    <label class="app-section-label" id="csv_label_resolution">Granularité :</label>
                                     <div class="app-toggle-group">
                                         <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_day"
                                             autocomplete="off" checked>
                                         <label class="app-toggle-label" for="csv_res_rad_day"
-                                            id="csv_res_rad_lbl_day">Single days</label>
+                                            id="csv_res_rad_lbl_day">Jours individuels</label>
 
                                         <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_month"
                                             autocomplete="off">
                                         <label class="app-toggle-label" for="csv_res_rad_month"
-                                            id="csv_res_rad_lbl_month">Summed by month</label>
+                                            id="csv_res_rad_lbl_month">Agrégé par mois</label>
 
                                         <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_year"
                                             autocomplete="off">
                                         <label class="app-toggle-label" for="csv_res_rad_year"
-                                            id="csv_res_rad_lbl_year">Summed by year</label>
+                                            id="csv_res_rad_lbl_year">Agrégé par année</label>
                                     </div>
                                 </div>
 
                                 <div>
                                     <button type="button" class="app-primary-button" onclick="downloadCsv();">
                                         <i class="fas fa-download me-2"></i>
-                                        <span id="csv_button_download">Download</span>
+                                        <span id="csv_button_download">Télécharger</span>
                                     </button>
                                 </div>
                             </div>
@@ -740,15 +727,15 @@
     <script src="lib/bootstrap.bundle.min.js?build=20260404b"></script>
     <script src="js/version.js?build=20260404b"></script>
     <script src="js/sidebar.js?build=20260405b"></script>
-    <script src="js/localization.js?build=20260611d"></script>
-    <script src="js/csv.js?build=20260405a"></script>
+    <script src="js/localization.js?build=20260708a"></script>
+    <script src="js/csv.js?build=20260708a"></script>
     <script src="lib/hammer.min.js?build=20260404b"></script>
     <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
     <script src="js/chart_factory.js?build=20260407h"></script>
-    <script src="js/info_graphic.js?build=20260611d"></script>
-    <script src="js/main.js?build=20260611d"></script>
+    <script src="js/info_graphic.js?build=20260708a"></script>
+    <script src="js/main.js?build=20260708a"></script>
 </body>
 
 </html>

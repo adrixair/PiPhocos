@@ -90,6 +90,7 @@ def _configure_server_globals():
             "instance": {"name": "Test"},
             "server": {"public_url": "http://localhost"},
             "diagnostics": {"enabled": False},
+            "privacy": {"expose_device_identifiers": False},
             "device": {"start_date": date(2026, 4, 4)},
         }
     )
@@ -174,8 +175,33 @@ def test_diagnostics_endpoint_can_be_enabled(tmp_path, monkeypatch):
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["state"] == "ok"
-    assert payload["device"]["serial_number"] == "TEST-SERIAL-0001"
+    assert payload["device"]["serial_number"] is None
+    assert payload["raw_snapshot"]["serial_number"] is None
+    assert "raw_payload" not in payload["capabilities"]["QPGS0"]
     assert "raw_snapshot" in payload
+
+
+def test_device_identifiers_can_be_explicitly_exposed(tmp_path, monkeypatch):
+    _configure_server_globals()
+    server.config.config_data["privacy"]["expose_device_identifiers"] = True
+    db = Database(str(tmp_path / "privacy.sqlite"))
+    ensure_schema(db)
+    recorded_at = "2026-04-05T12:00:00+00:00"
+    record_snapshot(
+        db,
+        _sample(recorded_at, 800.0, 400.0, export_w=50.0),
+        {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+        pricing=_pricing(),
+    )
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    payload = server.app.test_client().get("/api/live").get_json()
+
+    assert payload["device"]["serial_number"] == "TEST-SERIAL-0001"
+    assert payload["device"]["device_id"] == "TEST-DEVICE-0001"
 
 
 def test_csv_filename_sanitizes_query_parameters(tmp_path, monkeypatch):
@@ -196,6 +222,44 @@ def test_csv_filename_sanitizes_query_parameters(tmp_path, monkeypatch):
     )
 
 
+def test_raw_csv_requires_explicit_range(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "raw_csv_range.sqlite"))
+    ensure_schema(db)
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get("/api/csv")
+
+    assert response.status_code == 400
+    assert response.get_json()["state"] == "error"
+
+
+def test_raw_csv_streams_explicit_range(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "raw_csv_stream.sqlite"))
+    ensure_schema(db)
+    recorded_at = "2026-04-05T12:00:00+00:00"
+    record_snapshot(
+        db,
+        _sample(recorded_at, 800.0, 400.0, export_w=50.0),
+        {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+        [],
+        max_gap_seconds=180,
+        persist_raw_frames=False,
+        pricing=_pricing(),
+    )
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get(
+        "/api/csv?start=2026-04-05T00:00:00%2B00:00&end=2026-04-06T00:00:00%2B00:00"
+    )
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    assert "recorded_at;operation_mode;fault" in response.get_data(as_text=True)
+    assert recorded_at in response.get_data(as_text=True)
+
+
 def test_numeric_query_parameters_reject_invalid_values():
     _configure_server_globals()
     client = server.app.test_client()
@@ -209,6 +273,144 @@ def test_numeric_query_parameters_reject_invalid_values():
         payload = response.get_json()
         assert response.status_code == 400
         assert payload["state"] == "error"
+
+
+def test_reconciliation_endpoint_compares_meter_and_interval_quality(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "reconciliation.sqlite"))
+    ensure_schema(db)
+    start = datetime(2026, 4, 5, 0, 0, 0, tzinfo=timezone.utc)
+    for offset in range(3):
+        recorded_at = (start + timedelta(seconds=offset)).isoformat()
+        record_snapshot(
+            db,
+            _sample(recorded_at, 0.0, 3600.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+            pricing=_pricing(),
+            expected_interval_seconds=1,
+            max_integrated_gap_seconds=3,
+            refresh_rollups=False,
+            run_compaction=False,
+        )
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get(
+        "/api/reconciliation"
+        "?start=2026-04-05T00:00:00%2B00:00"
+        "&end=2026-04-05T00:00:03%2B00:00"
+        "&meter_import_kwh=0.0025"
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["state"] == "ok"
+    assert abs(payload["piphocos"]["grid_import_energy_kwh"] - 0.002) < 1e-9
+    assert abs(payload["comparison"]["import"]["signed_error_kwh"] + 0.0005) < 1e-9
+    assert payload["coverage"]["integrated_seconds"] == 2.0
+    assert payload["coverage"]["missing_seconds"] == 1.0
+    assert payload["coverage"]["source"] == "intervals"
+    assert payload["coverage"]["quality"]["derived"]["interval_count"] == 2
+    assert payload["coverage"]["quality"]["gap_dropped"]["interval_count"] == 1
+
+
+def test_reconciliation_uses_daily_quality_summary_for_full_days(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "reconciliation_summary.sqlite"))
+    ensure_schema(db)
+    start = datetime(2026, 4, 5, 0, 0, 0, tzinfo=timezone.utc)
+    for offset in range(3):
+        recorded_at = (start + timedelta(seconds=offset)).isoformat()
+        record_snapshot(
+            db,
+            _sample(recorded_at, 0.0, 3600.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+            pricing=_pricing(),
+            expected_interval_seconds=1,
+            max_integrated_gap_seconds=3,
+        )
+    db.execute("DELETE FROM derived_energy_intervals")
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get(
+        "/api/reconciliation?start=2026-04-05&end=2026-04-05&meter_import_kwh=0.0025"
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["coverage"]["source"] == "daily_quality_summary"
+    assert abs(payload["piphocos"]["grid_import_energy_kwh"] - 0.002) < 1e-9
+    assert payload["coverage"]["quality"]["derived"]["interval_count"] == 2
+    assert payload["coverage"]["quality"]["gap_dropped"]["interval_count"] == 1
+
+
+def test_reconciliation_mixes_summarized_days_and_remaining_intervals(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "reconciliation_mixed.sqlite"))
+    ensure_schema(db)
+
+    for day in (5, 6):
+        start = datetime(2026, 4, day, 12, 0, 0, tzinfo=timezone.utc)
+        for offset in (0, 1):
+            recorded_at = (start + timedelta(seconds=offset)).isoformat()
+            record_snapshot(
+                db,
+                _sample(recorded_at, 0.0, 3600.0),
+                {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+                [],
+                max_gap_seconds=180,
+                persist_raw_frames=False,
+                pricing=_pricing(),
+                expected_interval_seconds=1,
+                max_integrated_gap_seconds=3,
+            )
+    db.execute("DELETE FROM derived_energy_intervals WHERE local_day = ?", ["2026-04-05"])
+    db.execute("DELETE FROM energy_quality_summary_days WHERE local_day = ?", ["2026-04-06"])
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    response = server.app.test_client().get(
+        "/api/reconciliation?start=2026-04-05&end=2026-04-06"
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["coverage"]["source"] == "mixed_quality_summary_intervals"
+    assert abs(payload["piphocos"]["grid_import_energy_kwh"] - 0.002) < 1e-9
+    assert payload["coverage"]["quality"]["derived"]["interval_count"] == 2
+
+
+def test_period_endpoint_can_skip_high_res_payload(tmp_path, monkeypatch):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "period_skip_high_res.sqlite"))
+    ensure_schema(db)
+    for recorded_at in ("2026-04-05T10:00:00+00:00", "2026-04-05T10:01:00+00:00"):
+        record_snapshot(
+            db,
+            _sample(recorded_at, 800.0, 400.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+            pricing=_pricing(),
+        )
+    monkeypatch.setattr(server, "_open_db", lambda: db)
+
+    full = server.app.test_client().get(
+        "/api/period?bucket=day&date=2026-04-05"
+    ).get_json()
+    light = server.app.test_client().get(
+        "/api/period?bucket=day&date=2026-04-05&include_high_res=0"
+    ).get_json()
+
+    assert full["state"] == "ok"
+    assert full["high_res"] != ""
+    assert light["state"] == "ok"
+    assert light["high_res"] == ""
 
 
 def test_period_payload_keeps_battery_charge_out_of_direct_pv_consumption(tmp_path):
@@ -1066,3 +1268,37 @@ def test_statistics_and_breakdown_use_materialized_rollups(tmp_path):
     assert stats_after["best_day_date"] == stats_before["best_day_date"]
     assert stats_after["best_day_production_kwh"] == stats_before["best_day_production_kwh"]
     assert breakdown_after["items"] == breakdown_before["items"]
+
+
+def test_reconciliation_get_stays_read_only_when_quality_summary_is_missing(tmp_path):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "reconciliation_lazy_quality.sqlite"))
+    ensure_schema(db)
+
+    for recorded_at in (
+        "2026-04-05T12:00:00+00:00",
+        "2026-04-05T12:00:01+00:00",
+    ):
+        record_snapshot(
+            db,
+            _sample(recorded_at, 600.0, 250.0),
+            {"QPGS0": {"supported": True, "checked_at": recorded_at, "crc_ok": True}},
+            [],
+            max_gap_seconds=180,
+            persist_raw_frames=False,
+            pricing=_pricing(),
+        )
+
+    db.execute("DELETE FROM energy_quality_summary_days")
+
+    payload = server._reconciliation_payload(
+        db,
+        datetime(2026, 4, 5, tzinfo=timezone.utc),
+        datetime(2026, 4, 6, tzinfo=timezone.utc),
+    )
+
+    assert payload["state"] == "ok"
+    assert payload["coverage"]["source"] == "intervals"
+    assert payload["coverage"]["interval_count"] == 2
+    row = db.fetchone("SELECT COUNT(*) AS count FROM energy_quality_summary_days")
+    assert row["count"] == 0

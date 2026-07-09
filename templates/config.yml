@@ -1,58 +1,89 @@
-## User Settings
+## Reglages utilisateur
 
-# Logging configuration: normal or verbose.
+# Journalisation : normal ou verbose.
 logging: normal
 
-# Sets the local time zone.
+# Fuseau horaire local.
 time_zone: "Europe/Paris"
 
-# Device configuration
+# Configuration de l'appareil
 device:
   type: Phocos
   start_date: 2024-01-01
 
-# Phocos Any-Grid / PI30 / QPGS over USB-RS232
+# Phocos Any-Grid / PI30 / QPGS via USB-RS232
 phocos:
-  # Replace with the serial adapter exposed on your host.
+  # Remplacer par l'adaptateur serie expose par votre hote.
   serial_port: /dev/ttyUSB0
   unit: 0
   timeout_s: 2.0
   enable_pi30_probe: true
   verbose_protocol_logging: false
+  # QPGS0 est lu a chaque intervalle du collecteur. Ces cadences pilotent
+  # les commandes completes plus lentes : PV/export exact et diagnostic.
+  qpigs_interval_s: 30.0
+  warning_interval_s: 240.0
+  static_refresh_interval_s: 86400.0
+  max_cached_power_age_s: 12.0
 
-# Electricity prices. Used to calculate earnings in the UI.
+# Prix electricite. Utilise pour estimer les couts et revenus.
 prices:
   price_per_grid_kwh: 0.325
   revenue_per_fed_in_kwh: 0.085
 
-# Tempo EDF API configuration for live grid pricing.
+# Configuration API Tempo EDF pour le tarif reseau courant.
 tempo:
   enabled: true
   api_base_url: https://www.api-couleur-tempo.fr/api
   timeout_s: 3.0
   cache_ttl_s: 3600
 
-# Instance name shown in the dashboard.
+# Nom affiche dans le tableau de bord.
 instance:
   name: "PiPhocos"
   
-## Internal Settings. Do not modify!
+## Reglages internes. Ne pas modifier sans raison.
 
-# Web server configuration. Do not modify!
-# `ip` is container-internal; host exposure is controlled by PIPHOCOS_HTTP_BIND
-# in docker-compose.yml.
+# Configuration serveur web.
+# `ip` est interne au conteneur; l'exposition hote est controlee par
+# PIPHOCOS_HTTP_BIND dans docker-compose.yml.
 server:
   ip: 0.0.0.0
   port: 5000
   public_host: localhost
   public_url: http://localhost:5000
 
-# Disabled by default because this endpoint exposes raw inverter metadata.
+# Desactive par defaut car ce point d'acces expose des metadonnees brutes.
 diagnostics:
   enabled: false
 
-# Data grabber configuration. Do not modify!
+# Confidentialite des API et de l'interface.
+privacy:
+  # False masque numero de serie et ID appareil dans les reponses HTTP.
+  expose_device_identifiers: false
+
+# Reglages SQLite. Le checkpoint passif est fait en maintenance; TRUNCATE est
+# reserve aux WAL trop gros pour eviter une degradation des lectures.
+database:
+  wal_truncate_threshold_mb: 96
+  # False evite de dupliquer tout le JSON brut dans chaque sample a 1 s/0,5 s.
+  # Mettre true seulement pour un diagnostic local ponctuel.
+  store_sample_raw_snapshot_json: false
+  # Les samples bruts a la seconde servent au graphe recent; les anciens points
+  # sont compresses en buckets 10 minutes.
+  raw_history_retention_hours: 6
+  # Les intervalles kWh detailles servent au recalcul recent. Au-dela, les
+  # totaux journaliers/mensuels/annuels et la qualite journaliere restent gardes.
+  energy_interval_retention_days: 45
+  energy_interval_prune_interval_s: 3600
+  energy_interval_prune_max_days: 14
+
+# Configuration du collecteur de donnees.
 grabber:
-  interval_s: 2
+  interval_s: 1
   max_gap_for_cumulative_s: 180
+  # Les trous plus longs que cette valeur ne sont pas integres dans les kWh.
+  # Laisser vide pour utiliser environ trois intervalles d'acquisition.
+  max_integrated_gap_s:
+  maintenance_interval_s: 60
   stale_after_s: 11

@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -24,6 +25,8 @@ class TempoApiClient:
         self.session = requests.Session()
         self._cache = None
         self._cache_monotonic = None
+        self._lock = threading.Lock()
+        self._refresh_thread = None
 
     def _fetch_json(self, route):
         response = self.session.get(
@@ -62,13 +65,16 @@ class TempoApiClient:
                 "tomorrow": self._fetch_json("jourTempo/tomorrow"),
                 "tariffs": self._fetch_json("tarifs"),
             }
-            self._cache = state
-            self._cache_monotonic = now_monotonic
+            with self._lock:
+                self._cache = state
+                self._cache_monotonic = now_monotonic
             return state
         except Exception:
             logging.exception("Tempo API refresh failed")
-            if self._cache is not None:
-                stale = dict(self._cache)
+            with self._lock:
+                cached = self._cache
+            if cached is not None:
+                stale = dict(cached)
                 stale["source"] = "tempo_api_stale_cache"
                 stale["stale"] = True
                 return stale
@@ -77,6 +83,44 @@ class TempoApiClient:
                 "available": False,
                 "source": "tempo_api_error",
             }
+
+    def get_cached_state(self):
+        if not self.enabled:
+            return {
+                "enabled": False,
+                "available": False,
+                "source": "disabled",
+            }
+        with self._lock:
+            cached = self._cache
+        if cached is not None:
+            return cached
+        return {
+            "enabled": True,
+            "available": False,
+            "source": "tempo_cache_empty",
+        }
+
+    def refresh_if_due_background(self, force=False):
+        if not self.enabled:
+            return
+        now_monotonic = time.monotonic()
+        with self._lock:
+            due = (
+                force
+                or self._cache is None
+                or self._cache_monotonic is None
+                or now_monotonic - self._cache_monotonic >= self.cache_ttl_s
+            )
+            running = self._refresh_thread is not None and self._refresh_thread.is_alive()
+            if not due or running:
+                return
+            self._refresh_thread = threading.Thread(
+                target=self.get_state,
+                kwargs={"force_refresh": True},
+                daemon=True,
+            )
+            self._refresh_thread.start()
 
 
 def build_pricing_context(state, fallback_grid_price, feed_in_revenue):

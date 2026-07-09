@@ -63,9 +63,7 @@ const dashboardTableConfigs = {
         { kind: "metric", key: "inverter_temperature_c", labelId: "metric_inverter_temperature", icon: "fas fa-temperature-half", digits: 1, source: "QPIGS" },
     ],
     device: [
-        { kind: "text", path: ["device", "serial_number"], labelId: "metric_serial_number", icon: "fas fa-barcode", sourceKind: "raw", source: "QPGS0 / QID" },
         { kind: "text", path: ["device", "protocol_id"], labelId: "metric_protocol_id", icon: "fas fa-code-branch", sourceKind: "raw", source: "QPI" },
-        { kind: "text", path: ["device", "device_id"], labelId: "metric_device_id", icon: "fas fa-fingerprint", sourceKind: "raw", source: "QID" },
         { kind: "text", path: ["device", "operation_mode"], labelId: "metric_operation_mode", icon: "fas fa-gear", sourceKind: "decoded", source: "QMOD" },
         { kind: "text", path: ["device", "other_units_connected"], labelId: "metric_other_units", icon: "fas fa-network-wired", sourceKind: "decoded", source: "QPGS0" },
         { kind: "text", path: ["device", "fault"], labelId: "metric_fault", icon: "fas fa-triangle-exclamation", sourceKind: "decoded", source: "QMOD / QPGS0" },
@@ -142,6 +140,7 @@ let gHistoryLiveRefreshInFlight = false;
 let gStatisticsRequestToken = 0;
 let gStatisticsHasLoadedOnce = false;
 let gHistoryRequestToken = 0;
+let gHistoryAbortController = null;
 let gHistoryHasLoadedOnce = false;
 let gLastDashboardGraphRecordedAt = null;
 let gLastDashboardGraphRefreshAt = 0;
@@ -397,7 +396,6 @@ function applyInitialViewState() {
 // Called when index.html has finished loading
 window.addEventListener('DOMContentLoaded', event => {
     gBaseUrl = new URL('.', window.location.href).href;
-    console.log("Setting base URI to " + gBaseUrl);
     restoreLanguage();
     restoreSettings();
     setupInfoTooltipHandlers();
@@ -887,7 +885,7 @@ function setHistoryLoadingState(loading) {
 
 function getInitialHistorySelectionKey(mode, initialDate = "") {
     if (mode === histories.ALL)
-        return null;
+        return histories.ALL;
 
     const parsed = parseHistoryDateForViewState(initialDate, mode);
     if (parsed != null)
@@ -1098,7 +1096,7 @@ async function fetchDashboardOverviewJSON() {
     if (gDashboardOverviewRequest != null)
         return gDashboardOverviewRequest;
 
-    gDashboardOverviewRequest = fetch(gBaseUrl + 'api/live')
+    gDashboardOverviewRequest = fetch(gBaseUrl + 'api/overview?compact=1')
         .then(response => response.json())
         .finally(() => {
             gDashboardOverviewRequest = null;
@@ -1155,6 +1153,8 @@ async function fetchRealTimeStatsJSON() {
     let stats = await fetchSeries(gDahboardGraphTimespan);
     if (stats != null && stats.length > 0)
         return stats;
+    if (Number(gDahboardGraphTimespan) === 24)
+        return stats || [];
 
     stats = await fetchSeries(24);
     return stats || [];
@@ -1366,7 +1366,7 @@ function getPeriodKeyFromDate(mode, date) {
 
 function getPeriodKeyFromSelectors(mode, prefix = "") {
     if (mode === histories.ALL)
-        return null;
+        return histories.ALL;
 
     const year = getSelectionValue(getSelectionControlId(prefix, "year"));
     const month = padStr(getSelectionValue(getSelectionControlId(prefix, "month")));
@@ -1430,6 +1430,9 @@ function parsePeriodKey(mode, key) {
 }
 
 function applyPeriodKeyToSelectors(prefix, mode, desiredKey) {
+    if (mode === histories.ALL)
+        return histories.ALL;
+
     const availability = getDateAvailabilityForMode(mode);
     if (availability == null || !Array.isArray(availability.values) || availability.values.length === 0) {
         setSelectionOptions(getSelectionControlId(prefix, "year"), [], "");
@@ -1626,6 +1629,7 @@ function updateHistoryStats(options = {}) {
     const updateCharts = options.updateCharts !== false;
     const updateHighRes = options.updateHighRes !== false;
     const updateDetails = options.updateDetails !== false;
+    const includeHighRes = updateHighRes && !liveRefresh;
 
     if (liveRefresh && (gActiveInfoBadge != null || gInfoTooltipShowTimer != null))
         return;
@@ -1642,6 +1646,13 @@ function updateHistoryStats(options = {}) {
         persistCurrentViewState();
     const historySelectionKey = getCurrentHistorySelectionKey();
     const requestToken = ++gHistoryRequestToken;
+    let abortController = null;
+    if (!liveRefresh && typeof AbortController !== "undefined") {
+        if (gHistoryAbortController != null)
+            gHistoryAbortController.abort();
+        gHistoryAbortController = new AbortController();
+        abortController = gHistoryAbortController;
+    }
 
     if (gCurHistory !== histories.ALL && currentPeriod == null) {
         if (!liveRefresh) {
@@ -1664,10 +1675,16 @@ function updateHistoryStats(options = {}) {
     }
 
     const detailsPromise = shouldFetchHistoryDetails(updateDetails)
-        ? fetchHistoryDetailsJSON()
+        ? fetchHistoryDetailsJSON({ signal: abortController?.signal })
         : Promise.resolve(null);
 
-    const request = Promise.all([fetchHistoryStatsJSON(), detailsPromise])
+    const request = Promise.all([
+        fetchHistoryStatsJSON({
+            includeHighRes,
+            signal: abortController?.signal,
+        }),
+        detailsPromise,
+    ])
         .then(([stats, details]) => {
             if (requestToken !== gHistoryRequestToken)
                 return;
@@ -1763,7 +1780,9 @@ function updateHistoryStats(options = {}) {
             if (!liveRefresh)
                 setViewStatus("history_status", null, "");
         })
-        .catch(() => {
+        .catch(error => {
+            if (error?.name === "AbortError")
+                return;
             if (requestToken !== gHistoryRequestToken || liveRefresh)
                 return;
 
@@ -1776,6 +1795,8 @@ function updateHistoryStats(options = {}) {
                 setElementVisible("history_card_high_res", false);
         })
         .finally(() => {
+            if (abortController != null && gHistoryAbortController === abortController)
+                gHistoryAbortController = null;
             if (requestToken !== gHistoryRequestToken || liveRefresh)
                 return;
             setHistoryLoadingState(false);
@@ -1849,8 +1870,8 @@ function refreshLiveHistoryStats() {
     const request = updateHistoryStats({
         liveRefresh: true,
         updateCharts: !preserveChartHover,
-        updateHighRes: !preserveChartHover,
-        updateDetails: !preserveChartHover,
+        updateHighRes: false,
+        updateDetails: false,
     });
     if (request != null && typeof request.finally === "function") {
         request.finally(() => {
@@ -1864,7 +1885,9 @@ function refreshLiveHistoryStats() {
 }
 
 // Async function to get the current stats
-async function fetchHistoryStatsJSON() {
+async function fetchHistoryStatsJSON(options = {}) {
+    const includeHighRes = options.includeHighRes !== false;
+    const signal = options.signal;
     let query = "api/period?bucket=";
     switch (gCurHistory) {
         case histories.TODAY:
@@ -1890,7 +1913,9 @@ async function fetchHistoryStatsJSON() {
             query += "all";
             break;
     }
-    const response = await fetch(gBaseUrl + query);
+    if (!includeHighRes)
+        query += "&include_high_res=0";
+    const response = await fetch(gBaseUrl + query, { signal });
     if (!response.ok)
         throw new Error("Could not load history period");
     const stats = await response.json();
@@ -1898,7 +1923,8 @@ async function fetchHistoryStatsJSON() {
 }
 
 // Async function to get the current stats
-async function fetchHistoryDetailsJSON() {
+async function fetchHistoryDetailsJSON(options = {}) {
+    const signal = options.signal;
     let query = "api/breakdown?bucket=";
     switch (gCurHistory) {
         case histories.MONTH:
@@ -1915,7 +1941,7 @@ async function fetchHistoryDetailsJSON() {
             query += "year";
             break;
     }
-    const response = await fetch(gBaseUrl + query);
+    const response = await fetch(gBaseUrl + query, { signal });
     if (!response.ok)
         throw new Error("Could not load history details");
     const payload = await response.json();

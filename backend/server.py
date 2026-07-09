@@ -10,12 +10,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import (
     Flask,
+    Response,
     g,
     has_app_context,
     jsonify,
-    make_response,
     request,
     send_from_directory,
+    stream_with_context,
 )
 from flask_compress import Compress
 
@@ -25,7 +26,9 @@ from energy_flow import estimate_site_flow, percent_or_default
 from paths import CONFIG_PATH, DATA_DIR, DB_PATH, SERVER_LOG_PATH, SITE_DIR
 from phocos_store import (
     calculate_power_flow_breakdown,
-    csv_rows_for_samples,
+    count_csv_rows_for_samples,
+    count_reconciliation_quality_summary_days,
+    count_reconciliation_unsummarized_interval_days,
     ensure_schema,
     get_best_bucket_total,
     get_bucket_totals,
@@ -33,6 +36,9 @@ from phocos_store import (
     get_current_snapshot,
     get_grouped_cumulative,
     get_history_series,
+    iter_csv_rows_for_samples,
+    get_reconciliation_full_day_rows,
+    get_reconciliation_interval_rows,
 )
 from tempo_edf import TempoApiClient, build_pricing_context
 import version
@@ -45,6 +51,10 @@ app = Flask(__name__)
 Compress(app)
 
 MAX_GRAPH_POINTS = 200
+MAX_RAW_CSV_ROWS = 100_000
+MAX_API_GROUPED_ITEMS = 5_000
+MAX_CSV_GROUPED_ITEMS = 100_000
+MAX_RECONCILIATION_DAYS = 400
 _SCHEMA_READY = False
 _SCHEMA_LOCK = threading.Lock()
 STATIC_ASSET_CACHE_MAX_AGE_SECONDS = 31536000
@@ -339,6 +349,48 @@ def _diagnostics_enabled():
     if not isinstance(diagnostics, dict):
         return False
     return bool(diagnostics.get("enabled", False))
+
+
+def _expose_device_identifiers():
+    if config is None:
+        return False
+
+    privacy = (config.config_data or {}).get("privacy", {})
+    if not isinstance(privacy, dict):
+        return False
+    return bool(privacy.get("expose_device_identifiers", False))
+
+
+def _public_device_identifier(value):
+    return value if _expose_device_identifiers() else None
+
+
+def _redact_snapshot_identifiers(snapshot):
+    if _expose_device_identifiers() or not isinstance(snapshot, dict):
+        return snapshot
+    redacted = dict(snapshot)
+    redacted["serial_number"] = None
+    redacted["device_id"] = None
+    return redacted
+
+
+def _public_capabilities(capabilities):
+    if _expose_device_identifiers() or not isinstance(capabilities, dict):
+        return capabilities
+
+    public = {}
+    for command, details in capabilities.items():
+        if not isinstance(details, dict):
+            public[command] = details
+            continue
+        public[command] = {
+            "supported": details.get("supported"),
+            "checked_at": details.get("checked_at"),
+            "protocol_id": details.get("protocol_id"),
+            "field_count": details.get("field_count"),
+            "crc_ok": details.get("crc_ok"),
+        }
+    return public
 
 
 def _history_sample_bounds(db, *, since_iso=None, local_day=None, table="history_samples"):
@@ -923,9 +975,9 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
         "device": {
             "other_units_connected": snapshot.get("other_units_connected"),
             "other_units_connected_code": snapshot.get("other_units_connected_code"),
-            "serial_number": snapshot.get("serial_number"),
+            "serial_number": _public_device_identifier(snapshot.get("serial_number")),
             "protocol_id": snapshot.get("protocol_id"),
-            "device_id": snapshot.get("device_id"),
+            "device_id": _public_device_identifier(snapshot.get("device_id")),
             "operation_mode": snapshot.get("operation_mode"),
             "operation_mode_code": snapshot.get("operation_mode_code"),
             "fault": snapshot.get("fault"),
@@ -1096,7 +1148,7 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
     else:
         payload["live_values_zeroed"] = False
     if include_capabilities:
-        payload["capabilities"] = current["capabilities"]
+        payload["capabilities"] = _public_capabilities(current["capabilities"])
     return payload
 
 
@@ -1213,6 +1265,245 @@ def _query_energy_totals(db, table, search_date):
         "grid_to_battery": _safe_float(totals.get("grid_to_battery_energy_kwh")),
         "earned_feed_in_eur": _safe_float(totals.get("earned_feed_in_eur")),
         "earned_savings_eur": _safe_float(totals.get("earned_savings_eur")),
+    }
+
+
+def _first_query_arg(*names):
+    for name in names:
+        value = request.args.get(name)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _optional_query_float(*names):
+    value = _first_query_arg(*names)
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid numeric value for {names[0]}") from exc
+
+
+def _parse_reconciliation_boundary(value, name, *, end_date_is_inclusive=False):
+    if not value:
+        raise ValueError(f"Missing required parameter {name}")
+
+    local_tz = _configured_local_tz()
+    value = value.strip()
+    try:
+        if len(value) == 10:
+            parsed_date = date.fromisoformat(value)
+            if end_date_is_inclusive:
+                parsed_date += timedelta(days=1)
+            return datetime.combine(parsed_date, datetime.min.time(), tzinfo=local_tz)
+
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid date value for {name}") from exc
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=local_tz)
+    return parsed.astimezone(local_tz)
+
+
+def _meter_reconciliation(piphocos_kwh, meter_kwh):
+    piphocos_kwh = _safe_float(piphocos_kwh)
+    if meter_kwh is None:
+        return {
+            "meter_kwh": None,
+            "piphocos_kwh": piphocos_kwh,
+            "signed_error_kwh": None,
+            "absolute_error_kwh": None,
+            "error_percent": None,
+        }
+
+    meter_kwh = max(float(meter_kwh), 0.0)
+    signed_error = piphocos_kwh - meter_kwh
+    return {
+        "meter_kwh": meter_kwh,
+        "piphocos_kwh": piphocos_kwh,
+        "signed_error_kwh": signed_error,
+        "absolute_error_kwh": abs(signed_error),
+        "error_percent": (
+            signed_error / meter_kwh * 100.0 if meter_kwh > 0.0 else None
+        ),
+    }
+
+
+def _reconciliation_payload(
+    db,
+    start_local,
+    end_local_exclusive,
+    *,
+    meter_import_kwh=None,
+    meter_export_kwh=None,
+):
+    if end_local_exclusive <= start_local:
+        raise ValueError("The reconciliation end must be after the start")
+
+    start_utc = start_local.astimezone(timezone.utc)
+    end_utc = end_local_exclusive.astimezone(timezone.utc)
+    start_utc_iso = start_utc.isoformat()
+    end_utc_iso = end_utc.isoformat()
+    period_seconds = max((end_utc - start_utc).total_seconds(), 0.0)
+    if period_seconds > MAX_RECONCILIATION_DAYS * 86400:
+        raise ValueError(
+            f"The reconciliation range is limited to {MAX_RECONCILIATION_DAYS} days"
+        )
+
+    rows_source = "intervals"
+    rows = None
+    if (
+        start_local.time() == datetime.min.time()
+        and end_local_exclusive.time() == datetime.min.time()
+        and end_local_exclusive.date() <= _now_local().date()
+    ):
+        start_day = start_local.strftime("%Y-%m-%d")
+        end_day_exclusive = end_local_exclusive.strftime("%Y-%m-%d")
+        summarized_days = count_reconciliation_quality_summary_days(
+            db,
+            start_day,
+            end_day_exclusive,
+        )
+        unsummarized_interval_days = count_reconciliation_unsummarized_interval_days(
+            db,
+            start_day,
+            end_day_exclusive,
+        )
+        rows = get_reconciliation_full_day_rows(
+            db,
+            start_day,
+            end_day_exclusive,
+        )
+        rows_source = (
+            "intervals"
+            if summarized_days == 0
+            else (
+                "daily_quality_summary"
+                if unsummarized_interval_days == 0
+                else "mixed_quality_summary_intervals"
+            )
+        )
+
+    if rows is None:
+        rows = get_reconciliation_interval_rows(db, start_utc_iso, end_utc_iso)
+
+    totals = {
+        "interval_count": 0,
+        "integrated_interval_count": 0,
+        "dropped_interval_count": 0,
+        "integrated_seconds": 0.0,
+        "dropped_seconds": 0.0,
+        "observed_interval_seconds": 0.0,
+        "max_interval_seconds": 0.0,
+        "positive_interval_count": 0,
+        "pv_energy_kwh": 0.0,
+        "load_energy_kwh": 0.0,
+        "grid_export_energy_kwh": 0.0,
+        "grid_import_energy_kwh": 0.0,
+        "grid_to_load_energy_kwh": 0.0,
+        "grid_to_battery_energy_kwh": 0.0,
+    }
+    quality_breakdown = {}
+    for row in rows:
+        quality = row["quality"] or "unknown"
+        interval_count = int(row["interval_count"] or 0)
+        observed_seconds = _safe_float(row["observed_interval_seconds"])
+        quality_breakdown[quality] = {
+            "interval_count": interval_count,
+            "seconds": observed_seconds,
+        }
+        totals["interval_count"] += interval_count
+        totals["integrated_interval_count"] += int(
+            row["integrated_interval_count"] or 0
+        )
+        totals["dropped_interval_count"] += int(row["dropped_interval_count"] or 0)
+        totals["integrated_seconds"] += _safe_float(row["integrated_seconds"])
+        totals["dropped_seconds"] += _safe_float(row["dropped_seconds"])
+        totals["observed_interval_seconds"] += observed_seconds
+        totals["max_interval_seconds"] = max(
+            totals["max_interval_seconds"],
+            _safe_float(row["max_interval_seconds"]),
+        )
+        totals["positive_interval_count"] += int(row["positive_interval_count"] or 0)
+        for key in (
+            "pv_energy_kwh",
+            "load_energy_kwh",
+            "grid_export_energy_kwh",
+            "grid_import_energy_kwh",
+            "grid_to_load_energy_kwh",
+            "grid_to_battery_energy_kwh",
+        ):
+            totals[key] += _safe_float(row[key])
+    totals["avg_interval_seconds"] = (
+        totals["observed_interval_seconds"] / totals["positive_interval_count"]
+        if totals["positive_interval_count"] > 0
+        else 0.0
+    )
+
+    integrated_seconds = _safe_float(totals.get("integrated_seconds"))
+    dropped_seconds = _safe_float(totals.get("dropped_seconds"))
+    missing_seconds = max(period_seconds - integrated_seconds, 0.0)
+
+    piphocos = {
+        "grid_import_energy_kwh": _safe_float(totals.get("grid_import_energy_kwh")),
+        "grid_export_energy_kwh": _safe_float(totals.get("grid_export_energy_kwh")),
+        "load_energy_kwh": _safe_float(totals.get("load_energy_kwh")),
+        "pv_energy_kwh": _safe_float(totals.get("pv_energy_kwh")),
+        "grid_to_load_energy_kwh": _safe_float(totals.get("grid_to_load_energy_kwh")),
+        "grid_to_battery_energy_kwh": _safe_float(
+            totals.get("grid_to_battery_energy_kwh")
+        ),
+    }
+
+    return {
+        "state": "ok",
+        "range": {
+            "start_local": start_local.isoformat(),
+            "end_local_exclusive": end_local_exclusive.isoformat(),
+            "start_utc": start_utc_iso,
+            "end_utc_exclusive": end_utc_iso,
+            "period_seconds": period_seconds,
+        },
+        "piphocos": piphocos,
+        "meter": {
+            "import_kwh": meter_import_kwh,
+            "export_kwh": meter_export_kwh,
+        },
+        "comparison": {
+            "import": _meter_reconciliation(
+                piphocos["grid_import_energy_kwh"],
+                meter_import_kwh,
+            ),
+            "export": _meter_reconciliation(
+                piphocos["grid_export_energy_kwh"],
+                meter_export_kwh,
+            ),
+        },
+        "coverage": {
+            "source": rows_source,
+            "interval_count": int(totals.get("interval_count") or 0),
+            "integrated_interval_count": int(
+                totals.get("integrated_interval_count") or 0
+            ),
+            "dropped_interval_count": int(totals.get("dropped_interval_count") or 0),
+            "integrated_seconds": integrated_seconds,
+            "dropped_seconds": dropped_seconds,
+            "observed_interval_seconds": _safe_float(
+                totals.get("observed_interval_seconds")
+            ),
+            "missing_seconds": missing_seconds,
+            "coverage_percent": percent_or_default(
+                integrated_seconds,
+                period_seconds,
+                0.0,
+            ),
+            "max_interval_seconds": _safe_float(totals.get("max_interval_seconds")),
+            "avg_interval_seconds": _safe_float(totals.get("avg_interval_seconds")),
+            "quality": quality_breakdown,
+        },
     }
 
 
@@ -1661,7 +1952,12 @@ def _breakdown_items(db, bucket_key, search_prefix):
         "months": "month",
         "years": "year",
     }[bucket_key]
-    rows = get_grouped_cumulative(db, bucket, 100000, search_prefix)["items"]
+    rows = get_grouped_cumulative(
+        db,
+        bucket,
+        MAX_API_GROUPED_ITEMS,
+        search_prefix,
+    )["items"]
     items = []
     for row in rows:
         produced_to_house = _safe_float(row["pv_to_load_energy_kwh"])
@@ -1879,7 +2175,7 @@ def _live_chart_payload_at(db, hours, *, reference_time):
     }
 
 
-def _period_history_payload(db, bucket, search_date):
+def _period_history_payload(db, bucket, search_date, *, include_high_res=True):
     table_key = _history_bucket_key(bucket)
     normalized_search = "all_time" if table_key == "all_time" else search_date
     if table_key != "all_time" and not normalized_search:
@@ -1894,14 +2190,19 @@ def _period_history_payload(db, bucket, search_date):
         **derived_payload,
         "high_res": (
             _serialized_high_res_for_day(db, normalized_search)
-            if table_key == "days"
+            if include_high_res and table_key == "days"
             else ""
         ),
     }
 
 
 def _grouped_energy_csv_rows(db, bucket_key, search_prefix):
-    rows = get_grouped_cumulative(db, bucket_key, 100000, search_prefix)["items"]
+    rows = get_grouped_cumulative(
+        db,
+        bucket_key,
+        MAX_CSV_GROUPED_ITEMS,
+        search_prefix,
+    )["items"]
     return [
         {
             "date": row["bucket"],
@@ -1920,6 +2221,27 @@ def _safe_csv_filename_part(value, fallback):
         for char in text
     ).strip("._")
     return (cleaned or fallback)[:64]
+
+
+def _csv_stream_response(filename, header, row_iterable):
+    def generate():
+        handle = io.StringIO()
+        writer = csv.writer(handle, delimiter=";")
+        writer.writerow(header)
+        yield handle.getvalue()
+        handle.seek(0)
+        handle.truncate(0)
+        for row in row_iterable:
+            writer.writerow(row)
+            yield handle.getvalue()
+            handle.seek(0)
+            handle.truncate(0)
+
+    response = Response(stream_with_context(generate()), mimetype="text/csv")
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename={filename}"
+    )
+    return response
 
 
 def _bounded_query_int(name, default, *, min_value=1, max_value=None):
@@ -2020,11 +2342,51 @@ def api_chart_live():
 def api_period():
     bucket = request.args.get("bucket", "day")
     search_date = request.args.get("date")
+    include_high_res = request.args.get("include_high_res", "1").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
     try:
-        payload = _period_history_payload(_open_db(), bucket, search_date)
+        payload = _period_history_payload(
+            _open_db(),
+            bucket,
+            search_date,
+            include_high_res=include_high_res,
+        )
     except ValueError as exc:
         return jsonify({"state": "error", "message": str(exc)}), 400
     return jsonify(payload), (404 if payload["state"] == "nodata" else 200)
+
+
+@app.route("/api/reconciliation", methods=["GET"])
+def api_reconciliation():
+    try:
+        start_local = _parse_reconciliation_boundary(
+            _first_query_arg("start", "from", "debut"),
+            "start",
+        )
+        end_local = _parse_reconciliation_boundary(
+            _first_query_arg("end", "to", "fin"),
+            "end",
+            end_date_is_inclusive=True,
+        )
+        payload = _reconciliation_payload(
+            _open_db(),
+            start_local,
+            end_local,
+            meter_import_kwh=_optional_query_float(
+                "meter_import_kwh",
+                "compteur_import_kwh",
+            ),
+            meter_export_kwh=_optional_query_float(
+                "meter_export_kwh",
+                "compteur_export_kwh",
+            ),
+        )
+    except ValueError as exc:
+        return jsonify({"state": "error", "message": str(exc)}), 400
+    return jsonify(payload)
 
 
 @app.route("/api/breakdown", methods=["GET"])
@@ -2082,13 +2444,14 @@ def api_diagnostics():
     if not current:
         return jsonify({"state": "nodata"}), 404
     snapshot = current["snapshot"]
+    public_snapshot = _redact_snapshot_identifiers(snapshot)
     return jsonify(
         {
             "state": "ok",
             "recorded_at": current["recorded_at"],
             "device": {
-                "serial_number": snapshot.get("serial_number"),
-                "device_id": snapshot.get("device_id"),
+                "serial_number": public_snapshot.get("serial_number"),
+                "device_id": public_snapshot.get("device_id"),
                 "protocol_id": snapshot.get("protocol_id"),
                 "operation_mode": snapshot.get("operation_mode"),
                 "fault": snapshot.get("fault"),
@@ -2096,17 +2459,17 @@ def api_diagnostics():
                 "warning_bitmap": snapshot.get("warning_bitmap"),
                 "flag_blob": snapshot.get("flag_blob"),
             },
-            "capabilities": get_capabilities(db),
+            "capabilities": _public_capabilities(get_capabilities(db)),
             "qpiri": snapshot.get("qpiri"),
             "inverter_status": snapshot.get("inverter_status"),
             "qpigs_status_flags": snapshot.get("qpigs_status_flags"),
             "device_status2": snapshot.get("device_status2"),
-            "raw_snapshot": snapshot,
+            "raw_snapshot": public_snapshot,
             "raw_text": _pretty_json(
                 {
                     "recorded_at": current["recorded_at"],
-                    "snapshot": snapshot,
-                    "capabilities": current.get("capabilities"),
+                    "snapshot": public_snapshot,
+                    "capabilities": _public_capabilities(current.get("capabilities")),
                     "cumulative": current.get("cumulative"),
                 }
             ),
@@ -2125,34 +2488,42 @@ def api_csv():
         except KeyError:
             return jsonify({"state": "error", "message": f"Unsupported CSV bucket {bucket}"}), 400
 
-        handle = io.StringIO()
-        writer = csv.writer(handle, delimiter=";")
-        writer.writerow(["date", "production", "consumption", "feed_in"])
-        for row in rows:
-            writer.writerow(
+        scope = prefix or "all"
+        filename_bucket = _safe_csv_filename_part(bucket, "data")
+        filename_scope = _safe_csv_filename_part(scope, "all")
+        return _csv_stream_response(
+            f"phocos_{filename_bucket}_{filename_scope}.csv",
+            ["date", "production", "consumption", "feed_in"],
+            (
                 [
                     row["date"],
                     row["production"],
                     row["consumption"],
                     row["feed_in"],
                 ]
-            )
-        scope = prefix or "all"
-        filename_bucket = _safe_csv_filename_part(bucket, "data")
-        filename_scope = _safe_csv_filename_part(scope, "all")
-        response = make_response(handle.getvalue())
-        response.headers["Content-Disposition"] = (
-            f"attachment; filename=phocos_{filename_bucket}_{filename_scope}.csv"
+                for row in rows
+            ),
         )
-        response.mimetype = "text/csv"
-        return response
 
     start = request.args.get("start")
     end = request.args.get("end")
-    rows = csv_rows_for_samples(db, start, end)
-    handle = io.StringIO()
-    writer = csv.writer(handle, delimiter=";")
-    writer.writerow(
+    if not start or not end:
+        return jsonify(
+            {
+                "state": "error",
+                "message": "Raw CSV export requires start and end parameters",
+            }
+        ), 400
+    if count_csv_rows_for_samples(db, start, end) > MAX_RAW_CSV_ROWS:
+        return jsonify(
+            {
+                "state": "error",
+                "message": f"Raw CSV export is limited to {MAX_RAW_CSV_ROWS} rows",
+            }
+        ), 413
+    filename = f"phocos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return _csv_stream_response(
+        filename,
         [
             "recorded_at",
             "operation_mode",
@@ -2170,16 +2541,9 @@ def api_csv():
             "pv_power_w",
             "pv_power_semantics",
             "solar_feed_to_grid_power_w",
-        ]
+        ],
+        iter_csv_rows_for_samples(db, start, end),
     )
-    for row in rows:
-        writer.writerow(list(row))
-    response = make_response(handle.getvalue())
-    response.headers["Content-Disposition"] = (
-        f"attachment; filename=phocos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    )
-    response.mimetype = "text/csv"
-    return response
 
 
 def main():

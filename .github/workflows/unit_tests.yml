@@ -1,4 +1,4 @@
-name: Python Unit Tests
+name: Tests unitaires Python
 
 on: [push]
 
@@ -12,16 +12,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Preparer Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Installer les dependances
         run: |
           python -m pip install --upgrade pip
           pip install flake8
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-      - name: Test with pytest
+      - name: Tester avec pytest
         run: |
+          python scripts/privacy_scan.py
+          python scripts/public_language_scan.py
+          python scripts/storage_benchmark.py --samples 50 --interval 1
           pytest
