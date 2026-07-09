@@ -38,6 +38,7 @@ Modifier `data/config.yml` :
 
 - `phocos.serial_port`
 - `device.start_date`
+- `prices.tariff` (`auto`, `flat` ou `zen_weekend`)
 - `prices.price_per_grid_kwh`
 - `prices.revenue_per_fed_in_kwh`
 

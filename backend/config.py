@@ -57,8 +57,13 @@ DEFAULT_CONFIG = {
         "stale_after_s": 11,
     },
     "prices": {
+        "tariff": "auto",
         "price_per_grid_kwh": 0.325,
         "revenue_per_fed_in_kwh": 0.085,
+        "zen_weekend": {
+            "weekday_ttc_per_kwh": 0.2180,
+            "weekend_ttc_per_kwh": 0.1637,
+        },
     },
     "tempo": {
         "enabled": True,

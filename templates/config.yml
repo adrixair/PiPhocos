@@ -28,8 +28,15 @@ phocos:
 
 # Prix electricite. Utilise pour estimer les couts et revenus.
 prices:
+  # `auto` conserve le comportement existant : Tempo si disponible, sinon prix plat.
+  # `flat` applique price_per_grid_kwh a chaque kWh evite.
+  # `zen_weekend` applique le prix EDF semaine ou week-end/jour ferie.
+  tariff: auto
   price_per_grid_kwh: 0.325
   revenue_per_fed_in_kwh: 0.085
+  zen_weekend:
+    weekday_ttc_per_kwh: 0.2180
+    weekend_ttc_per_kwh: 0.1637
 
 # Configuration API Tempo EDF pour le tarif reseau courant.
 tempo:

@@ -57,6 +57,38 @@ Pour comparer correctement :
 - Consommation maison : comparer a `load_energy_kwh`, en tenant compte de ce
   que le Phocos voit ou ne voit pas.
 
+Pour les contrats EDF Zen Week-End, la facture se compare d'abord en kWh import
+reseau. Le cout variable peut ensuite etre calcule avec `prices.tariff:
+zen_weekend`, qui applique le prix semaine ou week-end/jour ferie au moment de
+l'echantillon. L'abonnement mensuel, la CTA et les majorations fixes ne doivent
+pas etre melanges au prix variable utilise pour les economies : reduire un kWh
+consomme evite le prix variable, mais ne supprime pas l'abonnement.
+
+Exemple de configuration Zen Week-End avec prix TTC directs :
+
+```yaml
+prices:
+  tariff: zen_weekend
+  revenue_per_fed_in_kwh: 0.085
+  zen_weekend:
+    weekday_ttc_per_kwh: 0.2180
+    weekend_ttc_per_kwh: 0.1637
+```
+
+Si une facture donne les lignes en euros HT/kWh et l'accise separement, la meme
+configuration peut etre calibree depuis ces lignes :
+
+```yaml
+prices:
+  tariff: zen_weekend
+  revenue_per_fed_in_kwh: 0.085
+  zen_weekend:
+    weekday_eht_per_kwh: 0.1514
+    weekend_eht_per_kwh: 0.1060
+    accise_eht_per_kwh: 0.03086
+    vat_rate: 0.20
+```
+
 L'API expose le rapport a la demande :
 
 ```text

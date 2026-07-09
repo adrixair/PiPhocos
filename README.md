@@ -85,8 +85,11 @@ Modifier `data/config.yml`, notamment :
 
 - `phocos.serial_port`
 - `device.start_date`
+- `prices.tariff` : `auto`, `flat` ou `zen_weekend`.
 - `prices.price_per_grid_kwh`
 - `prices.revenue_per_fed_in_kwh`
+- `prices.zen_weekend` si votre contrat distingue les heures semaine et les
+  heures week-end/jours feries.
 - `privacy.expose_device_identifiers` uniquement si vous acceptez d'afficher
   les identifiants materiels dans l'API et l'interface.
 - `database.store_sample_raw_snapshot_json` doit rester `false` sauf diagnostic

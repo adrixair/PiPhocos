@@ -315,6 +315,8 @@ def _pricing_context(db=None, current=None, force_refresh=False):
         tempo_state,
         prices["price_per_grid_kwh"],
         prices["revenue_per_fed_in_kwh"],
+        prices_config=prices,
+        reference_time=(current or {}).get("recorded_at") if current else None,
     )
 
 
@@ -1134,6 +1136,8 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
             "tempo_color": pricing["color_label"],
             "tempo_tomorrow_color": pricing["tomorrow_color_label"],
             "tempo_display": pricing["display"],
+            "price_display": pricing.get("price_display") or pricing["display"],
+            "tariff_mode": pricing.get("tariff_mode"),
         },
         "settings": settings,
     }
@@ -2314,6 +2318,8 @@ def api_tempo():
             "tempo_color": pricing["color_label"],
             "tempo_tomorrow_color": pricing["tomorrow_color_label"],
             "tempo_display": pricing["display"],
+            "price_display": pricing.get("price_display") or pricing["display"],
+            "tariff_mode": pricing.get("tariff_mode"),
         }
     )
 

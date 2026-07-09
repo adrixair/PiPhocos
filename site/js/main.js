@@ -455,7 +455,7 @@ function getDashboardRenderSignature(stats) {
     return [
         normalizeRecordedAtKey(stats?.["recorded_at"]),
         stats?.["current_data_stale"] === true ? "stale" : "fresh",
-        stats?.["pricing"]?.["tempo_display"] || "",
+        stats?.["pricing"]?.["price_display"] || stats?.["pricing"]?.["tempo_display"] || "",
     ].join("|");
 }
 
@@ -1049,9 +1049,9 @@ function updateCurrentStats() {
 
         const recordedAt = stats["recorded_at"] ? new Date(stats["recorded_at"]) : new Date();
         let subtitleText = recordedAt.toLocaleTimeString(getLocale(), { timeZone: "Europe/Paris" });
-        const tempoDisplay = stats["pricing"]?.["tempo_display"];
-        if (tempoDisplay)
-            subtitleText += " | Tempo: " + tempoDisplay;
+        const priceDisplay = stats["pricing"]?.["price_display"] || stats["pricing"]?.["tempo_display"];
+        if (priceDisplay)
+            subtitleText += " | Tarif: " + priceDisplay;
         if (stats["current_data_stale"] === true)
             subtitleText += " | " + getGenericString("dashboard_stale_note");
         document.getElementById("dashboard_subtitle_time").textContent = subtitleText;

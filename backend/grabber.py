@@ -34,7 +34,7 @@ def set_time_zone(tz):
     logging.info("Grabber: time is now %s", time.strftime("%X %x %Z"))
 
 
-def _pricing_from_cached_tempo():
+def _pricing_from_cached_tempo(reference_time=None):
     tempo_state = tempo_client.get_cached_state() if tempo_client else None
     if tempo_client:
         tempo_client.refresh_if_due_background()
@@ -43,6 +43,8 @@ def _pricing_from_cached_tempo():
         tempo_state,
         prices_config.get("price_per_grid_kwh", 0.0),
         prices_config.get("revenue_per_fed_in_kwh", 0.0),
+        prices_config=prices_config,
+        reference_time=reference_time,
     )
 
 
@@ -57,11 +59,13 @@ def _max_integrated_gap_seconds(interval_s):
 def update_data(device, db, interval_s):
     """Polls the device and persists the result."""
     started = time.monotonic()
-    pricing = _pricing_from_cached_tempo()
 
     poll_started = time.monotonic()
     poll_result = device.poll()
     poll_elapsed = time.monotonic() - poll_started
+    pricing = _pricing_from_cached_tempo(
+        reference_time=poll_result["snapshot"].get("recorded_at")
+    )
 
     persist_started = time.monotonic()
     record_snapshot(
