@@ -54,10 +54,10 @@ let translations = [
     ["history_card_usage", "Usage de l'énergie produite"],
     ["history_card_consumption", "Consommation électrique"],
     ["history_text_produced", "Énergie produite"],
-    ["history_text_earned_feedin", "Revenu injection estimé"],
-    ["history_text_earned_self", "Économie grâce à l'autoconsommation"],
-    ["history_text_bill_total", "Facture estimée"],
-    ["history_text_earned_total", "Coût net estimé"],
+    ["history_text_earned_feedin", "Crédit injection"],
+    ["history_text_earned_self", "Réduction solaire"],
+    ["history_text_bill_total", "Coût brut estimé"],
+    ["history_text_earned_total", "Facture estimée"],
     ["history_text_fedin", "Vers le réseau"],
     ["history_text_self_consumed", "Utilisée par la maison"],
     ["history_text_battery_charge", "Vers la batterie (est.)"],
@@ -258,16 +258,16 @@ let historyInfoStrings = {
         "Énergie totale utilisée par la maison ou les appareils raccordés sur la période sélectionnée.",
     ],
     earned_feedin: [
-        "Revenu d'injection estimé à partir du tarif d'export configuré dans l'application.",
+        "Crédit estimé pour l'énergie injectée sur le réseau, soustrait de la facture quand il existe.",
     ],
     earned_savings: [
-        "Économie variable estimée grâce à l'utilisation du solaire et de la batterie au lieu d'acheter ces kWh au réseau.",
+        "Réduction estimée grâce à l'énergie solaire utilisée sur place au lieu d'acheter ces kWh au réseau.",
     ],
     earned_total: [
-        "Coût net estimé après revenu d'injection. L'économie d'autoconsommation reste affichée séparément.",
+        "Montant estimé de la facture à payer sur la période, après réduction solaire et éventuel crédit d'injection.",
     ],
-    bill_estimated_total_eur: [
-        "Facture estimée sur la période : énergie achetée au réseau plus abonnement proratisé.",
+    bill_without_self_consumption_eur: [
+        "Coût brut estimé de l'électricité consommée au tarif réseau classique, abonnement proratisé inclus.",
     ],
     autarky: [
         "Part de la consommation totale couverte localement par le solaire et la batterie, sans achat d'énergie au réseau.",

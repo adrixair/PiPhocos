@@ -117,7 +117,7 @@ const staticInfoBadgeConfigs = [
     { elementId: "history_text_consumption_total", tooltipId: "consumed_total_kwh" },
     { elementId: "history_text_earned_feedin", tooltipId: "earned_feedin" },
     { elementId: "history_text_earned_self", tooltipId: "earned_savings" },
-    { elementId: "history_text_bill_total", tooltipId: "bill_estimated_total_eur" },
+    { elementId: "history_text_bill_total", tooltipId: "bill_without_self_consumption_eur" },
     { elementId: "history_text_earned_total", tooltipId: "earned_total" },
     { elementId: "history_text_autarky", tooltipId: "autarky" },
 ];
@@ -1730,13 +1730,20 @@ function updateHistoryStats(options = {}) {
             document.getElementById("history_stat_consumption_battery").innerHTML = numFormat(stats["consumed_from_battery_kwh"], 2);
             document.getElementById("history_stat_consumption_total").innerHTML = numFormat(stats["consumed_total_kwh"], 2);
 
-            document.getElementById("history_stat_earned_feedin").innerHTML = formatEarnedValue(stats["earned_feedin"]);
-            document.getElementById("history_stat_earned_self").innerHTML = formatEarnedValue(stats["earned_savings"]);
+            document.getElementById("history_stat_earned_feedin").innerHTML = formatReductionValue(stats["earned_feedin"]);
+            document.getElementById("history_stat_earned_self").innerHTML = formatReductionValue(stats["earned_savings"]);
             const billTotal = stats["bill_estimated_total_eur"];
             const billNet = stats["bill_net_after_injection_eur"] ?? billTotal;
+            const billWithoutSelfConsumption = stats["bill_without_self_consumption_eur"];
             const hasBillEstimate = Number.isFinite(parseFloat(billTotal));
+            const hasGrossBillEstimate = Number.isFinite(parseFloat(billWithoutSelfConsumption));
+            const grossBillEstimate = hasGrossBillEstimate
+                ? billWithoutSelfConsumption
+                : (hasBillEstimate
+                    ? Number(billTotal) + Number(stats["earned_savings"] || 0.0)
+                    : 0.0);
             document.getElementById("history_stat_bill_total").innerHTML = formatEarnedValue(
-                hasBillEstimate ? billTotal : 0.0);
+                grossBillEstimate);
             document.getElementById("history_stat_earned_total").innerHTML = formatEarnedValue(
                 hasBillEstimate
                     ? billNet
@@ -1820,6 +1827,15 @@ function formatEarnedValue(value) {
     if (!Number.isFinite(numericValue))
         return numFormat(value, 5);
     return numFormat(numericValue, 5);
+}
+
+function formatReductionValue(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue))
+        return numFormat(value, 5);
+    if (numericValue === 0)
+        return numFormat(0, 5);
+    return numFormat(-Math.abs(numericValue), 5);
 }
 
 

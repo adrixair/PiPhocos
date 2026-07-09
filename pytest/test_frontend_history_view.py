@@ -32,3 +32,19 @@ def test_all_time_period_fetch_uses_period_endpoint():
     script = (ROOT / "site" / "js" / "main.js").read_text(encoding="utf-8")
 
     assert 'case histories.ALL:\n            query += "all";' in script
+
+
+def test_billing_card_uses_short_invoice_labels():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    localization = (ROOT / "site" / "js" / "localization.js").read_text(
+        encoding="utf-8"
+    )
+    visible_copy = html + "\n" + localization
+
+    assert "Coût brut estimé" in visible_copy
+    assert "Réduction solaire" in visible_copy
+    assert "Crédit injection" in visible_copy
+    assert "Facture estimée" in visible_copy
+    assert "Coût net estimé" not in visible_copy
+    assert "sans autoconsommation" not in visible_copy
+    assert "Réduction autoconsommation" not in visible_copy
