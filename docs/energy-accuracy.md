@@ -64,6 +64,10 @@ l'echantillon. L'abonnement mensuel est ajoute a la facture estimee avec un
 prorata journalier, mais il ne doit pas etre melange au prix variable utilise
 pour les economies : reduire un kWh consomme evite le prix variable, mais ne
 supprime pas l'abonnement.
+La valeur `subscription_ttc_per_month` doit representer le fixe complet TTC a
+payer chaque mois. Si la facture separe `Abonnement` HT et `CTA`, additionner
+ces deux lignes HT avant TVA. Exemple : `14,68 EUR HT + 1,62 EUR HT de CTA`,
+puis `* 1,20`, donne `19,56 EUR TTC/mois`.
 
 Exemple de configuration Zen Week-End avec prix TTC directs :
 

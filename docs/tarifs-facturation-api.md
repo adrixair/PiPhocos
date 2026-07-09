@@ -33,6 +33,10 @@ nouvelles souscriptions a compter du 16 mars 2026 indique pour 9 kVA un
 abonnement mensuel de 19,56 EUR TTC, 21,80 cts EUR TTC/kWh en heures semaine et
 16,37 cts EUR TTC/kWh en heures week-end. Si une facture expose les prix HT et
 l'accise, `zen_weekend` peut etre calibre avec les lignes HT de la facture.
+Quand une facture affiche par exemple un abonnement de 14,68 EUR HT/mois, ce
+n'est pas encore le fixe TTC complet : il faut ajouter la part CTA mensuelle,
+puis appliquer la TVA. Avec 1,62 EUR HT/mois de CTA, le fixe devient
+`(14,68 + 1,62) * 1,20 = 19,56 EUR TTC/mois`.
 
 ## Facture et economies
 
@@ -47,6 +51,8 @@ Les vues jour, mois, annee et total exposent :
 - `earned_savings` : economie variable grace a l'autoconsommation.
 
 L'abonnement est donc bien dans la facture estimee, mais pas dans les economies.
+L'interface affiche aussi `Energie reseau` et `Abonnement` pour rendre visible
+la decomposition de la facture estimee.
 
 ## Sources de prix
 

@@ -118,6 +118,8 @@ const staticInfoBadgeConfigs = [
     { elementId: "history_text_earned_feedin", tooltipId: "earned_feedin" },
     { elementId: "history_text_earned_self", tooltipId: "earned_savings" },
     { elementId: "history_text_bill_total", tooltipId: "bill_without_self_consumption_eur" },
+    { elementId: "history_text_bill_variable", tooltipId: "bill_variable_eur" },
+    { elementId: "history_text_bill_subscription", tooltipId: "bill_subscription_eur" },
     { elementId: "history_text_earned_total", tooltipId: "earned_total" },
     { elementId: "history_text_autarky", tooltipId: "autarky" },
 ];
@@ -187,6 +189,9 @@ const HISTORY_LOADING_ELEMENT_IDS = [
     "history_stat_consumption_total",
     "history_stat_earned_feedin",
     "history_stat_earned_self",
+    "history_stat_bill_total",
+    "history_stat_bill_variable",
+    "history_stat_bill_subscription",
     "history_stat_earned_total",
     "history_stat_autarky",
 ];
@@ -1744,6 +1749,10 @@ function updateHistoryStats(options = {}) {
                     : 0.0);
             document.getElementById("history_stat_bill_total").innerHTML = formatEarnedValue(
                 grossBillEstimate);
+            document.getElementById("history_stat_bill_variable").innerHTML = formatEarnedValue(
+                hasBillEstimate ? stats["bill_variable_eur"] : 0.0);
+            document.getElementById("history_stat_bill_subscription").innerHTML = formatEarnedValue(
+                hasBillEstimate ? stats["bill_subscription_eur"] : 0.0);
             document.getElementById("history_stat_earned_total").innerHTML = formatEarnedValue(
                 hasBillEstimate
                     ? billNet

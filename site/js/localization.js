@@ -57,6 +57,8 @@ let translations = [
     ["history_text_earned_feedin", "Crédit injection"],
     ["history_text_earned_self", "Réduction solaire"],
     ["history_text_bill_total", "Coût brut estimé"],
+    ["history_text_bill_variable", "Énergie réseau"],
+    ["history_text_bill_subscription", "Abonnement"],
     ["history_text_earned_total", "Facture estimée"],
     ["history_text_fedin", "Vers le réseau"],
     ["history_text_self_consumed", "Utilisée par la maison"],
@@ -268,6 +270,12 @@ let historyInfoStrings = {
     ],
     bill_without_self_consumption_eur: [
         "Coût brut estimé de l'électricité consommée au tarif réseau classique, abonnement proratisé inclus.",
+    ],
+    bill_variable_eur: [
+        "Part variable de la facture estimée : kWh réellement achetés au réseau sur la période.",
+    ],
+    bill_subscription_eur: [
+        "Abonnement proratisé sur la période affichée, avec la part fixe complète TTC configurée.",
     ],
     autarky: [
         "Part de la consommation totale couverte localement par le solaire et la batterie, sans achat d'énergie au réseau.",
