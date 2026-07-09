@@ -51,8 +51,8 @@ Les vues jour, mois, annee et total exposent :
 - `earned_savings` : economie variable grace a l'autoconsommation.
 
 L'abonnement est donc bien dans la facture estimee, mais pas dans les economies.
-L'interface affiche aussi `Energie reseau` et `Abonnement` pour rendre visible
-la decomposition de la facture estimee.
+L'interface garde la carte compacte et expose le detail TTC de l'abonnement
+fixe dans les infobulles de facture.
 
 ## Sources de prix
 

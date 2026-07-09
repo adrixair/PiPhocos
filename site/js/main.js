@@ -118,8 +118,6 @@ const staticInfoBadgeConfigs = [
     { elementId: "history_text_earned_feedin", tooltipId: "earned_feedin" },
     { elementId: "history_text_earned_self", tooltipId: "earned_savings" },
     { elementId: "history_text_bill_total", tooltipId: "bill_without_self_consumption_eur" },
-    { elementId: "history_text_bill_variable", tooltipId: "bill_variable_eur" },
-    { elementId: "history_text_bill_subscription", tooltipId: "bill_subscription_eur" },
     { elementId: "history_text_earned_total", tooltipId: "earned_total" },
     { elementId: "history_text_autarky", tooltipId: "autarky" },
 ];
@@ -190,8 +188,6 @@ const HISTORY_LOADING_ELEMENT_IDS = [
     "history_stat_earned_feedin",
     "history_stat_earned_self",
     "history_stat_bill_total",
-    "history_stat_bill_variable",
-    "history_stat_bill_subscription",
     "history_stat_earned_total",
     "history_stat_autarky",
 ];
@@ -1017,6 +1013,56 @@ function configureStaticInfoBadges() {
     initDashboardTooltips();
 }
 
+function setInfoBadgeContent(elementId, content) {
+    const badge = document.getElementById(elementId)?.querySelector(".dashboard-info-badge");
+    if (badge == null || content == null || content === "")
+        return;
+    badge.dataset.infoContent = content;
+    if (gActiveInfoBadge === badge && gFloatingInfoTooltip?.classList.contains("is-visible"))
+        gFloatingInfoTooltip.innerHTML = escapeHtml(content);
+}
+
+function formatTooltipEuro(value, digits = 2) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue))
+        return getGenericString("unavailable");
+    return numFormat(numericValue, digits) + " €";
+}
+
+function updateBillingInfoBadges(stats, grossBillEstimate, finalBillEstimate) {
+    const monthlySubscription = stats["bill_subscription_ttc_per_month"];
+    const periodSubscription = stats["bill_subscription_eur"];
+    const gridEnergy = stats["bill_variable_eur"];
+    const monthlySubscriptionText = Number.isFinite(Number(monthlySubscription))
+        ? formatTooltipEuro(monthlySubscription)
+        : getGenericString("unavailable");
+    const periodSubscriptionText = Number.isFinite(Number(periodSubscription))
+        ? formatTooltipEuro(periodSubscription)
+        : getGenericString("unavailable");
+    const gridEnergyText = Number.isFinite(Number(gridEnergy))
+        ? formatTooltipEuro(gridEnergy)
+        : getGenericString("unavailable");
+
+    setInfoBadgeContent(
+        "history_text_bill_total",
+        "Coût brut TTC au tarif réseau classique. Il inclut la consommation totale valorisée au tarif réseau et l'abonnement fixe TTC proratisé. Abonnement utilisé : "
+            + monthlySubscriptionText
+            + "/mois TTC, soit 14,68 € HT/mois + 1,62 € HT/mois de CTA, avec TVA 20 %. Sur cette période : "
+            + periodSubscriptionText
+            + " d'abonnement."
+    );
+    setInfoBadgeContent(
+        "history_text_earned_total",
+        "Facture estimée TTC à payer. Elle inclut l'énergie réseau réellement achetée et l'abonnement fixe TTC proratisé; cet abonnement reste dû même avec peu ou pas de consommation. Sur cette période : "
+            + gridEnergyText
+            + " d'énergie réseau + "
+            + periodSubscriptionText
+            + " d'abonnement fixe = "
+            + formatTooltipEuro(finalBillEstimate)
+            + "."
+    );
+}
+
 // Called cyclically to update the current stats
 function updateCurrentStats() {
     if (!gDashboardVisible || document.hidden) return;
@@ -1749,14 +1795,12 @@ function updateHistoryStats(options = {}) {
                     : 0.0);
             document.getElementById("history_stat_bill_total").innerHTML = formatEarnedValue(
                 grossBillEstimate);
-            document.getElementById("history_stat_bill_variable").innerHTML = formatEarnedValue(
-                hasBillEstimate ? stats["bill_variable_eur"] : 0.0);
-            document.getElementById("history_stat_bill_subscription").innerHTML = formatEarnedValue(
-                hasBillEstimate ? stats["bill_subscription_eur"] : 0.0);
             document.getElementById("history_stat_earned_total").innerHTML = formatEarnedValue(
                 hasBillEstimate
                     ? billNet
                     : (showFeedIn ? stats["earned_total"] : stats["earned_savings"]));
+            if (hasBillEstimate)
+                updateBillingInfoBadges(stats, grossBillEstimate, billNet);
 
             if (feedInRow != null)
                 feedInRow.style.display = showFeedIn ? "" : "none";

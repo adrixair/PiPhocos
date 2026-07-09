@@ -41,12 +41,13 @@ def test_billing_card_uses_short_invoice_labels():
     )
     visible_copy = html + "\n" + localization
 
-    assert "Coût brut estimé" in visible_copy
+    assert "Coût brut TTC" in visible_copy
     assert "Réduction solaire" in visible_copy
     assert "Crédit injection" in visible_copy
-    assert "Énergie réseau" in visible_copy
-    assert "Abonnement" in visible_copy
-    assert "Facture estimée" in visible_copy
+    assert "Facture estimée TTC" in visible_copy
+    assert "abonnement fixe TTC" in visible_copy
+    assert "Énergie réseau" not in visible_copy
+    assert "history_text_bill_subscription" not in visible_copy
     assert "Coût net estimé" not in visible_copy
     assert "sans autoconsommation" not in visible_copy
     assert "Réduction autoconsommation" not in visible_copy
