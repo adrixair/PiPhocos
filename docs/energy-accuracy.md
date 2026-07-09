@@ -75,6 +75,17 @@ prices:
     weekend_ttc_per_kwh: 0.1637
 ```
 
+Exemple de configuration standard pour le Tarif Bleu option Base :
+
+```yaml
+prices:
+  tariff: standard
+  revenue_per_fed_in_kwh: 0.085
+  standard:
+    base_ttc_per_kwh: 0.1927
+    subscription_ttc_per_month: 19.56
+```
+
 Si une facture donne les lignes en euros HT/kWh et l'accise separement, la meme
 configuration peut etre calibree depuis ces lignes :
 
@@ -88,6 +99,18 @@ prices:
     accise_eht_per_kwh: 0.03086
     vat_rate: 0.20
 ```
+
+Apres correction du tarif, les anciens kWh restent valides. Pour recalculer
+uniquement les montants en euros de l'historique :
+
+```bash
+python3 scripts/reprice_energy_history.py --db data/db.sqlite --config data/config.yml
+python3 scripts/reprice_energy_history.py --db data/db.sqlite --config data/config.yml --apply
+```
+
+Le premier appel est un apercu sans modification. Le second applique le tarif
+configure aux resumes journaliers, mensuels et annuels, et aux intervalles
+detailles encore conserves.
 
 L'API expose le rapport a la demande :
 

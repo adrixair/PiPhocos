@@ -92,6 +92,27 @@ def test_zen_weekend_pricing_context_uses_weekday_and_weekend_prices():
     assert holiday["tariff_label"] == "Zen Week-End - Heures Week-End"
 
 
+def test_standard_pricing_context_uses_tarif_bleu_base_price():
+    prices = {
+        "tariff": "standard",
+        "revenue_per_fed_in_kwh": 0.085,
+        "standard": {
+            "base_ttc_per_kwh": 0.1927,
+        },
+    }
+
+    pricing = build_pricing_context(
+        None,
+        prices_config=prices,
+        reference_time="2026-04-07T12:00:00+02:00",
+    )
+
+    assert pricing["grid_price_eur_per_kwh"] == 0.1927
+    assert pricing["source"] == "config_standard"
+    assert pricing["tariff_label"] == "Tarif Bleu - Option Base"
+    assert pricing["tariff_mode"] == "standard"
+
+
 def test_zen_weekend_pricing_context_can_match_invoice_ht_lines():
     prices = {
         "tariff": "zen_weekend",

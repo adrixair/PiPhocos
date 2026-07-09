@@ -64,6 +64,10 @@ DEFAULT_CONFIG = {
             "weekday_ttc_per_kwh": 0.2180,
             "weekend_ttc_per_kwh": 0.1637,
         },
+        "standard": {
+            "base_ttc_per_kwh": 0.1927,
+            "subscription_ttc_per_month": 19.56,
+        },
     },
     "tempo": {
         "enabled": True,

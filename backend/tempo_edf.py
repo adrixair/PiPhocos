@@ -101,6 +101,32 @@ def _flat_pricing_context(prices_config, *, source="config", display=None):
     }
 
 
+def _standard_pricing_context(prices_config):
+    standard_config = prices_config.get("standard") or {}
+    grid_price = float(
+        standard_config.get(
+            "base_ttc_per_kwh",
+            prices_config.get("price_per_grid_kwh", 0.0),
+        )
+        or 0.0
+    )
+    feed_in_revenue = float(prices_config.get("revenue_per_fed_in_kwh", 0.0) or 0.0)
+    label = str(standard_config.get("label") or "Tarif Bleu - Option Base")
+    price_display = f"{label} {grid_price:.4f} EUR/kWh"
+    return {
+        "grid_price_eur_per_kwh": grid_price,
+        "feed_in_revenue_eur_per_kwh": feed_in_revenue,
+        "source": "config_standard",
+        "tempo_available": False,
+        "tariff_label": label,
+        "color_label": "Base",
+        "tomorrow_color_label": None,
+        "display": price_display,
+        "price_display": price_display,
+        "tariff_mode": "standard",
+    }
+
+
 def _zen_weekend_price(zen_config, reference_time):
     is_weekend_rate = _is_french_weekend_or_holiday(reference_time)
     if is_weekend_rate:
@@ -274,6 +300,8 @@ def build_pricing_context(
             prices_config,
             reference_time=reference_time,
         )
+    if explicit_tariff in {"standard", "tarif_bleu_base", "edf_base"}:
+        return _standard_pricing_context(prices_config)
     if explicit_tariff == "flat":
         return _flat_pricing_context(prices_config)
 

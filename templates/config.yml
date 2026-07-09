@@ -30,6 +30,7 @@ phocos:
 prices:
   # `auto` conserve le comportement existant : Tempo si disponible, sinon prix plat.
   # `flat` applique price_per_grid_kwh a chaque kWh evite.
+  # `standard` applique le Tarif Bleu option Base.
   # `zen_weekend` applique le prix EDF semaine ou week-end/jour ferie.
   tariff: auto
   price_per_grid_kwh: 0.325
@@ -37,6 +38,9 @@ prices:
   zen_weekend:
     weekday_ttc_per_kwh: 0.2180
     weekend_ttc_per_kwh: 0.1637
+  standard:
+    base_ttc_per_kwh: 0.1927
+    subscription_ttc_per_month: 19.56
 
 # Configuration API Tempo EDF pour le tarif reseau courant.
 tempo:

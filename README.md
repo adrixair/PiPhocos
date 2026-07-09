@@ -85,11 +85,12 @@ Modifier `data/config.yml`, notamment :
 
 - `phocos.serial_port`
 - `device.start_date`
-- `prices.tariff` : `auto`, `flat` ou `zen_weekend`.
+- `prices.tariff` : `auto`, `flat`, `standard` ou `zen_weekend`.
 - `prices.price_per_grid_kwh`
 - `prices.revenue_per_fed_in_kwh`
 - `prices.zen_weekend` si votre contrat distingue les heures semaine et les
   heures week-end/jours feries.
+- `prices.standard` si vous voulez simuler le Tarif Bleu option Base.
 - `privacy.expose_device_identifiers` uniquement si vous acceptez d'afficher
   les identifiants materiels dans l'API et l'interface.
 - `database.store_sample_raw_snapshot_json` doit rester `false` sauf diagnostic
@@ -150,6 +151,7 @@ Documentation technique :
 
 - [Performance d'acquisition](docs/performance-acquisition.md)
 - [Precision energetique et reconciliation kWh](docs/energy-accuracy.md)
+- [Tarifs, factures et API compteur](docs/tarifs-facturation-api.md)
 - [Compression et retention des donnees](docs/storage-compression.md)
 - [Plan de test performance](docs/operations/performance-test-plan.md)
 
