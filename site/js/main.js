@@ -117,6 +117,7 @@ const staticInfoBadgeConfigs = [
     { elementId: "history_text_consumption_total", tooltipId: "consumed_total_kwh" },
     { elementId: "history_text_earned_feedin", tooltipId: "earned_feedin" },
     { elementId: "history_text_earned_self", tooltipId: "earned_savings" },
+    { elementId: "history_text_bill_total", tooltipId: "bill_estimated_total_eur" },
     { elementId: "history_text_earned_total", tooltipId: "earned_total" },
     { elementId: "history_text_autarky", tooltipId: "autarky" },
 ];
@@ -1731,8 +1732,15 @@ function updateHistoryStats(options = {}) {
 
             document.getElementById("history_stat_earned_feedin").innerHTML = formatEarnedValue(stats["earned_feedin"]);
             document.getElementById("history_stat_earned_self").innerHTML = formatEarnedValue(stats["earned_savings"]);
+            const billTotal = stats["bill_estimated_total_eur"];
+            const billNet = stats["bill_net_after_injection_eur"] ?? billTotal;
+            const hasBillEstimate = Number.isFinite(parseFloat(billTotal));
+            document.getElementById("history_stat_bill_total").innerHTML = formatEarnedValue(
+                hasBillEstimate ? billTotal : 0.0);
             document.getElementById("history_stat_earned_total").innerHTML = formatEarnedValue(
-                showFeedIn ? stats["earned_total"] : stats["earned_savings"]);
+                hasBillEstimate
+                    ? billNet
+                    : (showFeedIn ? stats["earned_total"] : stats["earned_savings"]));
 
             if (feedInRow != null)
                 feedInRow.style.display = showFeedIn ? "" : "none";

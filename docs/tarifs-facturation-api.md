@@ -1,12 +1,12 @@
 # Tarifs, factures et API compteur
 
 PiPhocos calcule d'abord des kWh physiques. Le tarif sert ensuite a convertir
-certains kWh en euros. Il ne faut pas confondre :
+certains kWh en euros et a estimer une facture. Il ne faut pas confondre :
 
 - les kWh import reseau, comparables aux index Enedis/EDF;
 - les economies variables, calculees avec le prix du kWh evite;
-- l'abonnement, la CTA et les majorations fixes, qui servent au total facture
-  mais ne sont pas evites par chaque kWh solaire ou batterie.
+- l'abonnement, qui est ajoute a la facture estimee avec un prorata journalier
+  mais n'est pas evite par chaque kWh solaire ou batterie.
 
 ## Modes tarifaires disponibles
 
@@ -33,6 +33,20 @@ nouvelles souscriptions a compter du 16 mars 2026 indique pour 9 kVA un
 abonnement mensuel de 19,56 EUR TTC, 21,80 cts EUR TTC/kWh en heures semaine et
 16,37 cts EUR TTC/kWh en heures week-end. Si une facture expose les prix HT et
 l'accise, `zen_weekend` peut etre calibre avec les lignes HT de la facture.
+
+## Facture et economies
+
+Les vues jour, mois, annee et total exposent :
+
+- `bill_grid_import_kwh` : import reseau facture, incluant la maison et la
+  charge batterie depuis le reseau;
+- `bill_variable_eur` : cout estime des kWh importes;
+- `bill_subscription_eur` : abonnement prorate sur la periode affichee;
+- `bill_estimated_total_eur` : facture estimee avant revenu d'injection;
+- `bill_net_after_injection_eur` : cout net estime apres revenu d'injection;
+- `earned_savings` : economie variable grace a l'autoconsommation.
+
+L'abonnement est donc bien dans la facture estimee, mais pas dans les economies.
 
 ## Sources de prix
 

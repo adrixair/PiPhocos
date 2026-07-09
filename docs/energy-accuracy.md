@@ -60,9 +60,10 @@ Pour comparer correctement :
 Pour les contrats EDF Zen Week-End, la facture se compare d'abord en kWh import
 reseau. Le cout variable peut ensuite etre calcule avec `prices.tariff:
 zen_weekend`, qui applique le prix semaine ou week-end/jour ferie au moment de
-l'echantillon. L'abonnement mensuel, la CTA et les majorations fixes ne doivent
-pas etre melanges au prix variable utilise pour les economies : reduire un kWh
-consomme evite le prix variable, mais ne supprime pas l'abonnement.
+l'echantillon. L'abonnement mensuel est ajoute a la facture estimee avec un
+prorata journalier, mais il ne doit pas etre melange au prix variable utilise
+pour les economies : reduire un kWh consomme evite le prix variable, mais ne
+supprime pas l'abonnement.
 
 Exemple de configuration Zen Week-End avec prix TTC directs :
 
@@ -73,6 +74,7 @@ prices:
   zen_weekend:
     weekday_ttc_per_kwh: 0.2180
     weekend_ttc_per_kwh: 0.1637
+    subscription_ttc_per_month: 19.56
 ```
 
 Exemple de configuration standard pour le Tarif Bleu option Base :

@@ -81,6 +81,7 @@ def _configure_server_globals():
             "prices": {
                 "price_per_grid_kwh": 0.3,
                 "revenue_per_fed_in_kwh": 0.1,
+                "subscription_ttc_per_month": 31.0,
             },
             "grabber": {
                 "interval_s": 2,
@@ -101,6 +102,7 @@ def _pricing():
     return {
         "grid_price_eur_per_kwh": 0.3,
         "feed_in_revenue_eur_per_kwh": 0.1,
+        "subscription_ttc_per_month": 31.0,
         "source": "config",
         "tempo_available": False,
         "tariff_label": None,
@@ -513,6 +515,49 @@ def test_live_projection_savings_use_full_grid_price():
     assert abs(projection["battery_to_load_kwh"] - 0.2) < 1e-9
     assert abs(projection["earned_savings_eur"] - 0.15) < 1e-9
     assert abs(projection["earned_feed_in_eur"] - 0.01) < 1e-9
+
+
+def test_billing_estimate_adds_prorated_subscription(tmp_path):
+    _configure_server_globals()
+    db = Database(str(tmp_path / "billing.sqlite"))
+    ensure_schema(db)
+    db.execute(
+        """
+        INSERT INTO energy_summary_days (
+            local_day,
+            local_month,
+            local_year,
+            grid_to_load_energy_kwh,
+            grid_to_battery_energy_kwh,
+            updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        ["2026-04-07", "2026-04", "2026", 2.0, 1.0, "2026-04-08T00:00:00+00:00"],
+    )
+    payload = {
+        "consumed_from_grid_kwh": 2.0,
+        "battery_charge_from_grid_kwh": 1.0,
+        "earned_feedin": 0.2,
+        "earned_savings": 0.9,
+    }
+
+    result = server._add_billing_estimate(
+        db,
+        "days",
+        "2026-04-07",
+        payload,
+        _pricing(),
+    )
+
+    assert result["bill_grid_import_kwh"] == 3.0
+    assert abs(result["bill_variable_eur"] - 0.9) < 1e-9
+    assert abs(result["bill_subscription_eur"] - (31.0 / 30.0)) < 1e-9
+    assert abs(result["bill_estimated_total_eur"] - (0.9 + 31.0 / 30.0)) < 1e-9
+    assert abs(result["bill_net_after_injection_eur"] - (0.9 + 31.0 / 30.0 - 0.2)) < 1e-9
+    assert abs(
+        result["bill_without_self_consumption_eur"]
+        - (0.9 + 31.0 / 30.0 + 0.9)
+    ) < 1e-9
 
 
 def test_statistics_use_first_sample_date_for_start_of_operation(tmp_path, monkeypatch):

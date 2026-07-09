@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import threading
+import calendar
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -738,6 +739,135 @@ def _period_window_local(table, search_date, db=None):
     return start, effective_end
 
 
+def _local_day_bounds(start_local, end_local):
+    first = start_local.date().isoformat()
+    end_day = end_local.date()
+    if end_local.time() != datetime.min.time():
+        end_day = (end_local + timedelta(days=1)).date()
+    return first, end_day.isoformat()
+
+
+def _iter_local_day_segments(start_local, end_local):
+    cursor = start_local
+    while cursor < end_local:
+        next_midnight = (cursor + timedelta(days=1)).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        segment_end = min(next_midnight, end_local)
+        seconds = max((segment_end - cursor).total_seconds(), 0.0)
+        if seconds > 0.0:
+            yield cursor.date(), seconds / 86400.0
+        cursor = segment_end
+
+
+def _subscription_cost_for_window(start_local, end_local, monthly_ttc):
+    monthly_ttc = _safe_float(monthly_ttc)
+    if monthly_ttc <= 0.0 or end_local <= start_local:
+        return 0.0
+
+    total = 0.0
+    for local_day, day_fraction in _iter_local_day_segments(start_local, end_local):
+        days_in_month = calendar.monthrange(local_day.year, local_day.month)[1]
+        total += (monthly_ttc / days_in_month) * day_fraction
+    return total
+
+
+def _pricing_for_local_day(local_day):
+    prices = (config.config_data or {}).get("prices", {}) if config else {}
+    return build_pricing_context(
+        None,
+        prices_config=prices,
+        reference_time=f"{local_day}T12:00:00",
+    )
+
+
+def _daily_grid_import_rows(db, start_local, end_local):
+    start_day, end_day_exclusive = _local_day_bounds(start_local, end_local)
+    return db.execute(
+        """
+        SELECT
+            local_day,
+            COALESCE(grid_to_load_energy_kwh, 0.0)
+              + COALESCE(grid_to_battery_energy_kwh, 0.0) AS grid_import_kwh
+        FROM energy_summary_days
+        WHERE local_day >= ? AND local_day < ?
+        ORDER BY local_day ASC
+        """,
+        [start_day, end_day_exclusive],
+    )
+
+
+def _variable_grid_import_cost(db, start_local, end_local, payload, pricing):
+    total_import_kwh = _safe_float(payload.get("bill_grid_import_kwh"))
+    rows = _daily_grid_import_rows(db, start_local, end_local)
+    if not rows:
+        return total_import_kwh * _safe_float(pricing.get("grid_price_eur_per_kwh"))
+
+    summarized_import_kwh = 0.0
+    variable_eur = 0.0
+    for row in rows:
+        import_kwh = _safe_float(row["grid_import_kwh"])
+        summarized_import_kwh += import_kwh
+        day_pricing = _pricing_for_local_day(row["local_day"])
+        variable_eur += import_kwh * _safe_float(
+            day_pricing.get("grid_price_eur_per_kwh")
+        )
+
+    projected_import_kwh = max(total_import_kwh - summarized_import_kwh, 0.0)
+    if projected_import_kwh > 0.0:
+        variable_eur += projected_import_kwh * _safe_float(
+            pricing.get("grid_price_eur_per_kwh")
+        )
+    return variable_eur
+
+
+def _add_billing_estimate(db, table, search_date, payload, pricing):
+    period_start_local, period_end_local = _period_window_local(
+        table,
+        search_date,
+        db=db,
+    )
+    grid_import_kwh = _safe_float(payload.get("consumed_from_grid_kwh")) + _safe_float(
+        payload.get("battery_charge_from_grid_kwh")
+    )
+    payload["bill_grid_import_kwh"] = grid_import_kwh
+
+    variable_eur = _variable_grid_import_cost(
+        db,
+        period_start_local,
+        period_end_local,
+        payload,
+        pricing,
+    )
+    subscription_monthly = _safe_float(pricing.get("subscription_ttc_per_month"))
+    subscription_eur = _subscription_cost_for_window(
+        period_start_local,
+        period_end_local,
+        subscription_monthly,
+    )
+    feed_in_revenue = _safe_float(payload.get("earned_feedin"))
+    self_consumption_savings = _safe_float(payload.get("earned_savings"))
+    bill_total = variable_eur + subscription_eur
+    net_bill = max(bill_total - feed_in_revenue, 0.0)
+
+    payload.update(
+        {
+            "bill_variable_eur": variable_eur,
+            "bill_subscription_eur": subscription_eur,
+            "bill_subscription_ttc_per_month": subscription_monthly,
+            "bill_estimated_total_eur": bill_total,
+            "bill_net_after_injection_eur": net_bill,
+            "bill_without_self_consumption_eur": bill_total
+            + self_consumption_savings,
+            "bill_self_consumption_savings_eur": self_consumption_savings,
+        }
+    )
+    return payload
+
+
 def _period_completeness(db, table, search_date):
     period_start_local, period_end_local = _period_window_local(
         table,
@@ -1130,6 +1260,7 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
         "pricing": {
             "grid_price_eur_per_kwh": pricing["grid_price_eur_per_kwh"],
             "feed_in_revenue_eur_per_kwh": pricing["feed_in_revenue_eur_per_kwh"],
+            "subscription_ttc_per_month": pricing.get("subscription_ttc_per_month"),
             "source": pricing["source"],
             "tempo_available": pricing["tempo_available"],
             "tempo_tariff_label": pricing["tariff_label"],
@@ -1704,11 +1835,12 @@ def _zero_current_period_payload(db, table, search_date):
         return None
 
     pricing = _pricing_context(db=db, current=current)
-    return {
+    payload = {
         **_history_payload_from_totals(_zero_history_totals(), pricing=pricing),
         **_period_completeness(db, table, search_date),
         "history_values_zeroed": True,
     }
+    return _add_billing_estimate(db, table, search_date, payload, pricing)
 
 
 def _history_payload_from_derived(db, table, search_date):
@@ -1744,10 +1876,11 @@ def _history_payload_from_derived(db, table, search_date):
             totals["battery_discharge"],
             pricing=pricing,
         )
-    return {
+    payload = {
         **payload,
         **completeness,
     }
+    return _add_billing_estimate(db, table, search_date, payload, pricing)
 
 
 def _sorted_distinct_summary_values(db, table_name, column_name):
@@ -2312,6 +2445,7 @@ def api_tempo():
             "state": "ok" if pricing["tempo_available"] else "nodata",
             "grid_price_eur_per_kwh": pricing["grid_price_eur_per_kwh"],
             "feed_in_revenue_eur_per_kwh": pricing["feed_in_revenue_eur_per_kwh"],
+            "subscription_ttc_per_month": pricing.get("subscription_ttc_per_month"),
             "source": pricing["source"],
             "tempo_available": pricing["tempo_available"],
             "tempo_tariff_label": pricing["tariff_label"],

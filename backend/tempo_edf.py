@@ -86,10 +86,12 @@ def _prices_config_from_args(fallback_grid_price, feed_in_revenue, prices_config
 def _flat_pricing_context(prices_config, *, source="config", display=None):
     grid_price = float(prices_config.get("price_per_grid_kwh", 0.0) or 0.0)
     feed_in_revenue = float(prices_config.get("revenue_per_fed_in_kwh", 0.0) or 0.0)
+    subscription = float(prices_config.get("subscription_ttc_per_month", 0.0) or 0.0)
     price_display = display or f"{grid_price:.4f} EUR/kWh"
     return {
         "grid_price_eur_per_kwh": grid_price,
         "feed_in_revenue_eur_per_kwh": feed_in_revenue,
+        "subscription_ttc_per_month": subscription,
         "source": source,
         "tempo_available": False,
         "tariff_label": None,
@@ -111,11 +113,19 @@ def _standard_pricing_context(prices_config):
         or 0.0
     )
     feed_in_revenue = float(prices_config.get("revenue_per_fed_in_kwh", 0.0) or 0.0)
+    subscription = float(
+        standard_config.get(
+            "subscription_ttc_per_month",
+            prices_config.get("subscription_ttc_per_month", 0.0),
+        )
+        or 0.0
+    )
     label = str(standard_config.get("label") or "Tarif Bleu - Option Base")
     price_display = f"{label} {grid_price:.4f} EUR/kWh"
     return {
         "grid_price_eur_per_kwh": grid_price,
         "feed_in_revenue_eur_per_kwh": feed_in_revenue,
+        "subscription_ttc_per_month": subscription,
         "source": "config_standard",
         "tempo_available": False,
         "tariff_label": label,
@@ -155,10 +165,18 @@ def _zen_weekend_pricing_context(prices_config, *, reference_time=None):
         reference_time,
     )
     feed_in_revenue = float(prices_config.get("revenue_per_fed_in_kwh", 0.0) or 0.0)
+    subscription = float(
+        zen_config.get(
+            "subscription_ttc_per_month",
+            prices_config.get("subscription_ttc_per_month", 0.0),
+        )
+        or 0.0
+    )
     price_display = f"{label} {grid_price:.4f} EUR/kWh"
     return {
         "grid_price_eur_per_kwh": grid_price,
         "feed_in_revenue_eur_per_kwh": feed_in_revenue,
+        "subscription_ttc_per_month": subscription,
         "source": "config_zen_weekend",
         "tempo_available": False,
         "tariff_label": label,
@@ -313,6 +331,10 @@ def build_pricing_context(
             {
                 "price_per_grid_kwh": fallback_grid_price,
                 "revenue_per_fed_in_kwh": feed_in_revenue,
+                "subscription_ttc_per_month": prices_config.get(
+                    "subscription_ttc_per_month",
+                    0.0,
+                ),
             }
         )
 
@@ -328,6 +350,9 @@ def build_pricing_context(
         return {
             "grid_price_eur_per_kwh": fallback_grid_price,
             "feed_in_revenue_eur_per_kwh": feed_in_revenue,
+            "subscription_ttc_per_month": float(
+                prices_config.get("subscription_ttc_per_month", 0.0) or 0.0
+            ),
             "source": "config",
             "tempo_available": False,
             "tariff_label": tariff_label,
@@ -346,6 +371,9 @@ def build_pricing_context(
     return {
         "grid_price_eur_per_kwh": grid_price,
         "feed_in_revenue_eur_per_kwh": feed_in_revenue,
+        "subscription_ttc_per_month": float(
+            prices_config.get("subscription_ttc_per_month", 0.0) or 0.0
+        ),
         "source": state.get("source", "tempo_api"),
         "tempo_available": True,
         "tariff_label": tariff_label,

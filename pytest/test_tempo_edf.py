@@ -71,6 +71,7 @@ def test_zen_weekend_pricing_context_uses_weekday_and_weekend_prices():
         "zen_weekend": {
             "weekday_ttc_per_kwh": 0.2180,
             "weekend_ttc_per_kwh": 0.1637,
+            "subscription_ttc_per_month": 19.56,
         },
     }
 
@@ -88,6 +89,7 @@ def test_zen_weekend_pricing_context_uses_weekday_and_weekend_prices():
     assert weekday["grid_price_eur_per_kwh"] == 0.2180
     assert weekday["tariff_label"] == "Zen Week-End - Heures Semaine"
     assert weekday["tariff_mode"] == "zen_weekend"
+    assert weekday["subscription_ttc_per_month"] == 19.56
     assert holiday["grid_price_eur_per_kwh"] == 0.1637
     assert holiday["tariff_label"] == "Zen Week-End - Heures Week-End"
 
@@ -98,6 +100,7 @@ def test_standard_pricing_context_uses_tarif_bleu_base_price():
         "revenue_per_fed_in_kwh": 0.085,
         "standard": {
             "base_ttc_per_kwh": 0.1927,
+            "subscription_ttc_per_month": 19.56,
         },
     }
 
@@ -111,6 +114,7 @@ def test_standard_pricing_context_uses_tarif_bleu_base_price():
     assert pricing["source"] == "config_standard"
     assert pricing["tariff_label"] == "Tarif Bleu - Option Base"
     assert pricing["tariff_mode"] == "standard"
+    assert pricing["subscription_ttc_per_month"] == 19.56
 
 
 def test_zen_weekend_pricing_context_can_match_invoice_ht_lines():

@@ -63,6 +63,7 @@ DEFAULT_CONFIG = {
         "zen_weekend": {
             "weekday_ttc_per_kwh": 0.2180,
             "weekend_ttc_per_kwh": 0.1637,
+            "subscription_ttc_per_month": 19.56,
         },
         "standard": {
             "base_ttc_per_kwh": 0.1927,

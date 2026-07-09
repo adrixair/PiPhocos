@@ -50,13 +50,14 @@ let translations = [
     ["dash_flow_node_home", "Maison"],
     ["dash_flow_node_battery", "Batterie"],
     // Historique
-    ["history_card_earned", "Gains"],
+    ["history_card_earned", "Facture et économies"],
     ["history_card_usage", "Usage de l'énergie produite"],
     ["history_card_consumption", "Consommation électrique"],
     ["history_text_produced", "Énergie produite"],
-    ["history_text_earned_feedin", "Gain grâce à l'injection"],
+    ["history_text_earned_feedin", "Revenu injection estimé"],
     ["history_text_earned_self", "Économie grâce à l'autoconsommation"],
-    ["history_text_earned_total", "Total"],
+    ["history_text_bill_total", "Facture estimée"],
+    ["history_text_earned_total", "Coût net estimé"],
     ["history_text_fedin", "Vers le réseau"],
     ["history_text_self_consumed", "Utilisée par la maison"],
     ["history_text_battery_charge", "Vers la batterie (est.)"],
@@ -260,10 +261,13 @@ let historyInfoStrings = {
         "Revenu d'injection estimé à partir du tarif d'export configuré dans l'application.",
     ],
     earned_savings: [
-        "Économies estimées grâce à l'utilisation de votre propre énergie solaire au lieu de l'acheter au réseau.",
+        "Économie variable estimée grâce à l'utilisation du solaire et de la batterie au lieu d'acheter ces kWh au réseau.",
     ],
     earned_total: [
-        "Bénéfice total estimé : revenu d'injection plus économies d'autoconsommation.",
+        "Coût net estimé après revenu d'injection. L'économie d'autoconsommation reste affichée séparément.",
+    ],
+    bill_estimated_total_eur: [
+        "Facture estimée sur la période : énergie achetée au réseau plus abonnement proratisé.",
     ],
     autarky: [
         "Part de la consommation totale couverte localement par le solaire et la batterie, sans achat d'énergie au réseau.",
