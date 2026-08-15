@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815q"' in html
+    assert 'href="css/newdesign.css?build=20260815s"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -236,6 +236,10 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert html.count("data-chart-series-controls=") == 5
     assert "function syncChartSeriesControls(chart, canvasId)" in chart_script
     assert "chart.toggleDataVisibility(item.index);" in chart_script
+    assert 'const seriesColor = isDoughnut' in chart_script
+    assert 'button.title =' not in chart_script
+    assert ".chart-panel .app-panel-head-between" in design
+    assert "white-space: nowrap;" in design
     assert ".dashboard-settings-panel .app-panel-head-between" in design
     assert "flex: 0 0 2.75rem;" in design
     assert "...STACKED_BAR_STYLE" in chart_script

@@ -97,14 +97,17 @@ function syncChartSeriesControls(chart, canvasId) {
     container.replaceChildren();
 
     legendItems.forEach(item => {
+        const isDoughnut = chart.config.type === "doughnut" || chart.config.type === "pie";
+        const seriesColor = isDoughnut
+            ? item.fillStyle
+            : (item.strokeStyle || item.fillStyle);
         const button = document.createElement("button");
         button.type = "button";
         button.className = "chart-series-control-button" + (item.hidden ? "" : " is-active");
         button.setAttribute("aria-pressed", item.hidden ? "false" : "true");
-        button.title = (item.hidden ? "Afficher " : "Masquer ") + item.text;
         button.style.setProperty(
             "--dashboard-series-color",
-            String(item.fillStyle || item.strokeStyle || COLOR_CHART_TEXT)
+            String(seriesColor || COLOR_CHART_TEXT)
         );
 
         const dot = document.createElement("span");
@@ -115,7 +118,7 @@ function syncChartSeriesControls(chart, canvasId) {
         button.append(dot, label);
 
         button.addEventListener("click", () => {
-            if (chart.config.type === "doughnut" || chart.config.type === "pie")
+            if (isDoughnut)
                 chart.toggleDataVisibility(item.index);
             else
                 chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));

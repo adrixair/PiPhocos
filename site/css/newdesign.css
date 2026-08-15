@@ -1207,6 +1207,29 @@ body {
     width: 2.75rem;
   }
 
+  .chart-panel .app-panel-head-between {
+    align-items: center;
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .chart-panel .app-panel-title {
+    flex: 0 0 auto;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .chart-panel .app-segmented-control {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .chart-panel .app-segmented-button {
+    min-width: 2.3rem;
+    padding-left: 0.52rem;
+    padding-right: 0.52rem;
+  }
+
   .dashboard-chart-series-controls,
   .chart-series-controls {
     display: grid;
@@ -1426,6 +1449,13 @@ body {
 
   .history-mode-year .history-toolbar-controls {
     grid-template-columns: 2.35rem minmax(0, 1fr) 2.35rem;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .chart-panel .app-panel-head-between {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
