@@ -495,6 +495,72 @@ body {
   height: 340px;
 }
 
+.dashboard-chart-series-controls,
+.chart-series-controls {
+  display: none;
+}
+
+.dashboard-chart-series-button,
+.chart-series-control-button {
+  --dashboard-series-color: var(--app-text-soft);
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  color: var(--app-text);
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 620;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.dashboard-chart-series-button.is-active,
+.chart-series-control-button.is-active {
+  border-color: var(--dashboard-series-color);
+}
+
+.dashboard-chart-series-button:not(.is-active),
+.chart-series-control-button:not(.is-active) {
+  color: var(--app-text-soft);
+  opacity: 0.58;
+}
+
+.dashboard-chart-series-dot {
+  background: var(--dashboard-series-color);
+  border: 2px solid var(--dashboard-series-color);
+  border-radius: 50%;
+  flex: 0 0 0.72rem;
+  height: 0.72rem;
+  width: 0.72rem;
+}
+
+.dashboard-chart-series-button:not(.is-active) .dashboard-chart-series-dot,
+.chart-series-control-button:not(.is-active) .dashboard-chart-series-dot {
+  background: #ffffff;
+}
+
+.dashboard-chart-series-solar {
+  --dashboard-series-color: var(--app-flow-solar);
+}
+
+.dashboard-chart-series-home {
+  --dashboard-series-color: var(--app-flow-home);
+}
+
+.dashboard-chart-series-battery {
+  --dashboard-series-color: var(--app-flow-battery);
+}
+
+.dashboard-chart-series-grid {
+  --dashboard-series-color: var(--app-flow-grid);
+}
+
 .chart-shell-history {
   height: 340px;
 }
@@ -1127,6 +1193,39 @@ body {
     font-size: 0.92rem;
   }
 
+  .dashboard-settings-panel .app-panel-head-between {
+    align-items: center;
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+
+  .dashboard-settings-panel .app-panel-toggle {
+    flex: 0 0 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    width: 2.75rem;
+  }
+
+  .dashboard-chart-series-controls,
+  .chart-series-controls {
+    display: grid;
+    gap: 0.45rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 0.7rem;
+  }
+
+  .chart-series-control-button {
+    font-size: 0.74rem;
+    overflow: hidden;
+  }
+
+  .chart-series-control-button span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .dashboard-grid,
   .stats-hero-grid,
   .stats-detail-grid,
@@ -1183,7 +1282,13 @@ body {
   }
 
   .power-flow-node-meta {
-    display: none;
+    display: block;
+    font-size: 0.55rem;
+    line-height: 1.05;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .power-flow-node-progress {
@@ -1207,6 +1312,10 @@ body {
 
   .power-flow-arrow {
     transform: scale(0.8);
+  }
+
+  .power-flow-arrow:nth-child(even) {
+    display: none;
   }
 
   .history-toolbar .app-panel-body {
@@ -1234,9 +1343,14 @@ body {
 
   .app-select {
     font-size: 0.82rem;
-    min-height: 2.6rem;
+    min-height: 2.75rem;
     padding-left: 0.65rem;
     padding-right: 1.8rem;
+  }
+
+  .app-segmented-button,
+  .history-toolbar-controls .app-icon-button {
+    min-height: 2.75rem;
   }
 
   .chart-shell-dashboard,
@@ -1291,6 +1405,14 @@ body {
 
   .power-flow-node-hub {
     width: var(--flow-hub-node-width);
+  }
+
+  .power-flow-arrow {
+    display: none;
+  }
+
+  .power-flow-arrow:nth-child(3n + 1) {
+    display: block;
   }
 
   .history-toolbar-controls {

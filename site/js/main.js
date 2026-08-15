@@ -395,6 +395,7 @@ window.addEventListener('DOMContentLoaded', event => {
     restoreSettings();
     setupInfoTooltipHandlers();
     configureDashboardLayout();
+    window.addEventListener("resize", queueVisibleChartResize);
     configureStaticInfoBadges();
     setInterval(updateTime, 1000);
     setInterval(updateCurrentStats, DATA_REFRESH_INTERVAL_MS);

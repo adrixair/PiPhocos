@@ -21,7 +21,7 @@
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
     <link href="css/custom.css?build=20260815b" rel="stylesheet" />
-    <link href="css/newdesign.css?build=20260815l" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20260815q" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -220,6 +220,33 @@
                             </div>
                         </div>
                         <div class="app-panel-body">
+                            <div class="dashboard-chart-series-controls" role="group"
+                                aria-label="Séries affichées sur le graphique">
+                                <button class="dashboard-chart-series-button is-active dashboard-chart-series-solar"
+                                    type="button" data-dashboard-series="0" aria-pressed="true"
+                                    onclick="toggleDashboardChartSeries(0);">
+                                    <span class="dashboard-chart-series-dot" aria-hidden="true"></span>
+                                    <span>Solaire</span>
+                                </button>
+                                <button class="dashboard-chart-series-button is-active dashboard-chart-series-home"
+                                    type="button" data-dashboard-series="1" aria-pressed="true"
+                                    onclick="toggleDashboardChartSeries(1);">
+                                    <span class="dashboard-chart-series-dot" aria-hidden="true"></span>
+                                    <span>Maison</span>
+                                </button>
+                                <button class="dashboard-chart-series-button is-active dashboard-chart-series-battery"
+                                    type="button" data-dashboard-series="2" aria-pressed="true"
+                                    onclick="toggleDashboardChartSeries(2);">
+                                    <span class="dashboard-chart-series-dot" aria-hidden="true"></span>
+                                    <span>Batterie</span>
+                                </button>
+                                <button class="dashboard-chart-series-button is-active dashboard-chart-series-grid"
+                                    type="button" data-dashboard-series="3" aria-pressed="true"
+                                    onclick="toggleDashboardChartSeries(3);">
+                                    <span class="dashboard-chart-series-dot" aria-hidden="true"></span>
+                                    <span>Réseau</span>
+                                </button>
+                            </div>
                             <div class="chart-shell chart-shell-dashboard is-loading" id="dashboard_chart_shell"
                                 aria-busy="true">
                                 <canvas id="chart_dashboard" role="img"
@@ -447,6 +474,8 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                    <div class="chart-series-controls" data-chart-series-controls="chart_usage"
+                                        role="group" aria-label="Séries du graphique de production"></div>
                                     <div class="chart-shell chart-shell-donut" id="history_chart_usage_shell">
                                         <canvas id="chart_usage" role="img"
                                             aria-label="Répartition de l'énergie produite"></canvas>
@@ -491,6 +520,8 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                    <div class="chart-series-controls" data-chart-series-controls="chart_consumption"
+                                        role="group" aria-label="Séries du graphique de consommation"></div>
                                     <div class="chart-shell chart-shell-donut" id="history_chart_consumption_shell">
                                         <canvas id="chart_consumption" role="img"
                                             aria-label="Répartition de la consommation électrique"></canvas>
@@ -584,6 +615,9 @@
                                         <span class="app-panel-title" id="history_card_graph_production_text">Détails de la production</span>
                                     </div>
                                     <div class="app-panel-body">
+                                        <div class="chart-series-controls"
+                                            data-chart-series-controls="chart_history_details_production" role="group"
+                                            aria-label="Séries du détail de la production"></div>
                                         <div class="chart-shell chart-shell-medium" id="history_chart_details_production_shell">
                                             <canvas id="chart_history_details_production" role="img"
                                                 aria-label="Détail de la production sur la période"></canvas>
@@ -596,6 +630,9 @@
                                         <span class="app-panel-title" id="history_card_graph_consumption_text">Détails de la consommation</span>
                                     </div>
                                     <div class="app-panel-body">
+                                        <div class="chart-series-controls"
+                                            data-chart-series-controls="chart_history_details_consumption" role="group"
+                                            aria-label="Séries du détail de la consommation"></div>
                                         <div class="chart-shell chart-shell-medium" id="history_chart_details_consumption_shell">
                                             <canvas id="chart_history_details_consumption" role="img"
                                                 aria-label="Détail de la consommation sur la période"></canvas>
@@ -612,6 +649,9 @@
                                 <span class="app-panel-title" id="history_card_high_res_data_text">Courbe du jour</span>
                             </div>
                             <div class="app-panel-body">
+                                <div class="chart-series-controls"
+                                    data-chart-series-controls="chart_history_high_res" role="group"
+                                    aria-label="Séries de la courbe du jour"></div>
                                 <div class="chart-shell chart-shell-history" id="history_chart_high_res_shell">
                                     <canvas id="chart_history_high_res" role="img"
                                         aria-label="Courbe de puissance de la journée"></canvas>
@@ -635,14 +675,14 @@
     <script src="lib/bootstrap.bundle.min.js?build=20260404b"></script>
     <script src="js/version.js?build=20260404b"></script>
     <script src="js/sidebar.js?build=20260405b"></script>
-    <script src="js/localization.js?build=20260815j"></script>
+    <script src="js/localization.js?build=20260815m"></script>
     <script src="lib/hammer.min.js?build=20260404b"></script>
     <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
-    <script src="js/chart_factory.js?build=20260815l"></script>
-    <script src="js/info_graphic.js?build=20260815j"></script>
-    <script src="js/main.js?build=20260815l"></script>
+    <script src="js/chart_factory.js?build=20260815p"></script>
+    <script src="js/info_graphic.js?build=20260815m"></script>
+    <script src="js/main.js?build=20260815n"></script>
 </body>
 
 </html>

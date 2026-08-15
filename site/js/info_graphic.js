@@ -409,21 +409,27 @@ function renderInfoGraphicFromOverview(payload) {
     setInfoGraphicNode(
         "solar",
         solarActive ? formatInfoGraphicPower(solarPower) : "0 W",
-        "",
+        solarActive
+            ? getInfoGraphicString("flow_state_production", "Production")
+            : getInfoGraphicString("flow_state_idle", "Veille"),
         solarActive
     );
     setInfoGraphicNode("grid", gridValue, gridMeta, gridActive);
     setInfoGraphicNode(
         "hub",
         formatInfoGraphicPercent(inverterLoad),
-        "",
-        true
+        inverterLoad != null
+            ? getInfoGraphicString("flow_state_inverter_load", "Charge")
+            : getInfoGraphicString("flow_state_idle", "Veille"),
+        inverterLoad != null
     );
     setInfoGraphicInverterLoad(inverterLoad);
     setInfoGraphicNode(
         "home",
         homeActive ? formatInfoGraphicPower(housePower) : "0 W",
-        "",
+        homeActive
+            ? getInfoGraphicString("flow_state_consumption", "Consommation")
+            : getInfoGraphicString("flow_state_idle", "Veille"),
         homeActive
     );
     setInfoGraphicNode("battery", batteryValue, batteryMeta, batteryActive);

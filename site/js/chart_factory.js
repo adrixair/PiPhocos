@@ -29,6 +29,103 @@ function isDashboardChartInteractionActive() {
     return isChartInteractionActive(gChartDashboard);
 }
 
+function useTouchChartControls() {
+    return typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(max-width: 767.98px), (pointer: coarse)").matches;
+}
+
+function syncDashboardChartSeriesControls() {
+    document.querySelectorAll("[data-dashboard-series]").forEach(button => {
+        const datasetIndex = Number(button.dataset.dashboardSeries);
+        const visible = gChartDashboard == null
+            || typeof gChartDashboard.isDatasetVisible !== "function"
+            || gChartDashboard.isDatasetVisible(datasetIndex);
+        button.classList.toggle("is-active", visible);
+        button.setAttribute("aria-pressed", visible ? "true" : "false");
+    });
+}
+
+function applyDashboardChartResponsiveOptions(chart) {
+    if (chart == null)
+        return;
+
+    const touchLayout = useTouchChartControls();
+    chart.options.plugins.legend.display = !touchLayout;
+    chart.options.plugins.zoom.zoom.wheel.enabled = !touchLayout;
+    chart.options.plugins.zoom.zoom.pinch.enabled = !touchLayout;
+    chart.options.plugins.zoom.pan.enabled = !touchLayout;
+}
+
+function toggleDashboardChartSeries(datasetIndex) {
+    if (gChartDashboard == null || typeof gChartDashboard.setDatasetVisibility !== "function")
+        return;
+
+    const visible = gChartDashboard.isDatasetVisible(datasetIndex);
+    gChartDashboard.setDatasetVisibility(datasetIndex, !visible);
+    gChartDashboard.update("none");
+    syncDashboardChartSeriesControls();
+}
+
+function getChartSeriesControlContainer(canvasId) {
+    return document.querySelector('[data-chart-series-controls="' + canvasId + '"]');
+}
+
+function applyChartSeriesControlOptions(chart, canvasId) {
+    if (chart == null)
+        return;
+
+    const touchLayout = useTouchChartControls();
+    const hasExternalControls = getChartSeriesControlContainer(canvasId) != null;
+    if (hasExternalControls)
+        chart.options.plugins.legend.display = !touchLayout;
+
+    if (canvasId === "chart_history_high_res") {
+        chart.options.plugins.zoom.zoom.wheel.enabled = !touchLayout;
+        chart.options.plugins.zoom.zoom.pinch.enabled = !touchLayout;
+        chart.options.plugins.zoom.pan.enabled = !touchLayout;
+    }
+}
+
+function syncChartSeriesControls(chart, canvasId) {
+    const container = getChartSeriesControlContainer(canvasId);
+    if (chart == null || container == null)
+        return;
+
+    const generateLabels = chart.options.plugins.legend.labels.generateLabels;
+    const legendItems = typeof generateLabels === "function" ? generateLabels(chart) : [];
+    container.replaceChildren();
+
+    legendItems.forEach(item => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chart-series-control-button" + (item.hidden ? "" : " is-active");
+        button.setAttribute("aria-pressed", item.hidden ? "false" : "true");
+        button.title = (item.hidden ? "Afficher " : "Masquer ") + item.text;
+        button.style.setProperty(
+            "--dashboard-series-color",
+            String(item.fillStyle || item.strokeStyle || COLOR_CHART_TEXT)
+        );
+
+        const dot = document.createElement("span");
+        dot.className = "dashboard-chart-series-dot";
+        dot.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.textContent = item.text;
+        button.append(dot, label);
+
+        button.addEventListener("click", () => {
+            if (chart.config.type === "doughnut" || chart.config.type === "pie")
+                chart.toggleDataVisibility(item.index);
+            else
+                chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+            chart.update("none");
+            syncChartSeriesControls(chart, canvasId);
+        });
+        container.appendChild(button);
+    });
+}
+
 function isHistoryChartInteractionActive() {
     return [
         gChartConsumption,
@@ -90,8 +187,15 @@ function resizeVisibleCharts() {
         const canvas = document.getElementById(entry.canvasId);
         if (entry.chart == null || canvas == null || canvas.offsetParent == null)
             return;
-        if (entry.chart === gChartDashboard)
+        if (entry.chart === gChartDashboard) {
             entry.chart.options.scales.x = buildDashboardTimeScaleOptions(canvas.clientWidth);
+            applyDashboardChartResponsiveOptions(entry.chart);
+            syncDashboardChartSeriesControls();
+        }
+        else {
+            applyChartSeriesControlOptions(entry.chart, entry.canvasId);
+            syncChartSeriesControls(entry.chart, entry.canvasId);
+        }
         if (entry.chart === gChartHistoryHighRes)
             entry.chart.options.scales.x = buildHistoryTimeScaleOptions(canvas.clientWidth);
         entry.chart.resize();
@@ -212,6 +316,7 @@ function utilBeautifyDate(date) {
 
 // Creates a chart showing the consumption distribution
 function createConsumptionChart(canvasId, gridPercentage, pvPercentage, batteryPercentage) {
+    const touchLayout = useTouchChartControls();
     var xValues = [
         getChartString("chart_from_pv"),
         getChartString("chart_from_battery"),
@@ -249,6 +354,9 @@ function createConsumptionChart(canvasId, gridPercentage, pvPercentage, batteryP
                     display: false
                 },
                 plugins: {
+                    legend: {
+                        display: !touchLayout,
+                    },
                     labels: {
                         // render 'label', 'value', 'percentage', 'image' or custom function, default is 'percentage'
                         render: 'percentage',
@@ -259,17 +367,21 @@ function createConsumptionChart(canvasId, gridPercentage, pvPercentage, batteryP
                 }
             }
         });
+        syncChartSeriesControls(gChartConsumption, canvasId);
         return;
     }
 
     gChartConsumption.data.labels = chartConfig.labels;
     gChartConsumption.data.datasets = chartConfig.datasets;
     gChartConsumption.options.locale = getLocale();
+    applyChartSeriesControlOptions(gChartConsumption, canvasId);
     gChartConsumption.update("none");
+    syncChartSeriesControls(gChartConsumption, canvasId);
 }
 
 // Creates a chart showing the power consumption distribution
 function createUsageChart(canvasId, housePercentage, batteryPercentage, fedInPercentage) {
+    const touchLayout = useTouchChartControls();
     if (fedInPercentage === null || fedInPercentage === undefined)
         fedInPercentage = 0.0;
     var xValues = [
@@ -317,6 +429,9 @@ function createUsageChart(canvasId, housePercentage, batteryPercentage, fedInPer
                     display: false
                 },
                 plugins: {
+                    legend: {
+                        display: !touchLayout,
+                    },
                     labels: {
                         // render 'label', 'value', 'percentage', 'image' or custom function, default is 'percentage'
                         render: 'percentage',
@@ -327,13 +442,16 @@ function createUsageChart(canvasId, housePercentage, batteryPercentage, fedInPer
                 }
             }
         });
+        syncChartSeriesControls(gChartUsage, canvasId);
         return;
     }
 
     gChartUsage.data.labels = chartConfig.labels;
     gChartUsage.data.datasets = chartConfig.datasets;
     gChartUsage.options.locale = getLocale();
+    applyChartSeriesControlOptions(gChartUsage, canvasId);
     gChartUsage.update("none");
+    syncChartSeriesControls(gChartUsage, canvasId);
 }
 
 function normalizePowerChartMax(value) {
@@ -525,6 +643,7 @@ function createDashboardChart(canvasId, data) {
     const canvas = document.getElementById(canvasId);
     const xScaleOptions = buildDashboardTimeScaleOptions(canvas?.clientWidth || window.innerWidth);
     const chart_data = buildDashboardPowerChartData(data);
+    const touchLayout = useTouchChartControls();
 
     if (gChartDashboard != null && gChartDashboard.data.datasets.length != chart_data.chartData.datasets.length) {
         gChartDashboard.destroy();
@@ -584,18 +703,21 @@ function createDashboardChart(canvasId, data) {
                 },
                 locale: getLocale(),
                 plugins: {
+                    legend: {
+                        display: !touchLayout,
+                    },
                     zoom: {
                         zoom: {
                             wheel: {
-                                enabled: true
+                                enabled: !touchLayout
                             },
                             pinch: {
-                                enabled: true
+                                enabled: !touchLayout
                             },
                             mode: 'x',
                         },
                         pan: {
-                            enabled: true,
+                            enabled: !touchLayout,
                             mode: 'x',
                         }
                     },
@@ -611,6 +733,7 @@ function createDashboardChart(canvasId, data) {
                 }
             }
         });
+        syncDashboardChartSeriesControls();
     }
     else {
         gChartDashboard.data.labels = chart_data.chartData.labels;
@@ -620,7 +743,9 @@ function createDashboardChart(canvasId, data) {
         );
         gChartDashboard.options.scales.x = xScaleOptions;
         gChartDashboard.options.scales.y.max = chart_data.max;
+        applyDashboardChartResponsiveOptions(gChartDashboard);
         gChartDashboard.update("none");
+        syncDashboardChartSeriesControls();
     }
 }
 
@@ -672,6 +797,7 @@ function buildHighResPowerChartData(data) {
 function createHighResChart(canvasId, data) {
     const canvas = document.getElementById(canvasId);
     const xScaleOptions = buildHistoryTimeScaleOptions(canvas?.clientWidth || window.innerWidth);
+    const touchLayout = useTouchChartControls();
 
     const chart_data = buildHighResPowerChartData(data);
 
@@ -733,6 +859,9 @@ function createHighResChart(canvasId, data) {
                 },
                 locale: getLocale(),
                 plugins: {
+                    legend: {
+                        display: !touchLayout,
+                    },
                     decimation: {
                         enabled: false,
                         algorithm: 'min-max',
@@ -740,15 +869,15 @@ function createHighResChart(canvasId, data) {
                     zoom: {
                         zoom: {
                             wheel: {
-                                enabled: true
+                                enabled: !touchLayout
                             },
                             pinch: {
-                                enabled: true
+                                enabled: !touchLayout
                             },
                             mode: 'x',
                         },
                         pan: {
-                            enabled: true,
+                            enabled: !touchLayout,
                             mode: 'x',
                         }
                     },
@@ -776,10 +905,13 @@ function createHighResChart(canvasId, data) {
         gChartHistoryHighRes.resize();
         gChartHistoryHighRes.update("none");
     }
+    applyChartSeriesControlOptions(gChartHistoryHighRes, canvasId);
+    syncChartSeriesControls(gChartHistoryHighRes, canvasId);
 }
 
 // Creates a chart showing history details
 function createHistoryDetailsChartProduction(canvasId, data) {
+    const touchLayout = useTouchChartControls();
     const labels = [];
     const showFeedIn = hasPositiveValueAtKey(data, "produced_feed_in");
     const chart_data = {
@@ -838,6 +970,9 @@ function createHistoryDetailsChartProduction(canvasId, data) {
                     display: false
                 },
                 plugins: {
+                    legend: {
+                        display: !touchLayout,
+                    },
                     labels: false,
                     tooltip: {
                         callbacks: {
@@ -899,18 +1034,22 @@ function createHistoryDetailsChartProduction(canvasId, data) {
                 }
             }
         });
+        syncChartSeriesControls(gChartHistoryDetailsProduced, canvasId);
         return;
     }
 
     gChartHistoryDetailsProduced.data.labels = chart_data.labels;
     gChartHistoryDetailsProduced.data.datasets = chart_data.datasets;
     gChartHistoryDetailsProduced.options.locale = getLocale();
+    applyChartSeriesControlOptions(gChartHistoryDetailsProduced, canvasId);
     gChartHistoryDetailsProduced.resize();
     gChartHistoryDetailsProduced.update("none");
+    syncChartSeriesControls(gChartHistoryDetailsProduced, canvasId);
 }
 
 // Creates a chart showing history details
 function createHistoryDetailsChartConsumption(canvasId, data) {
+    const touchLayout = useTouchChartControls();
 
     const labels = [];
     const chart_data = {
@@ -966,6 +1105,9 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
                     display: false
                 },
                 plugins: {
+                    legend: {
+                        display: !touchLayout,
+                    },
                     labels: false,
                     tooltip: {
                         callbacks: {
@@ -1023,12 +1165,15 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
                 }
             }
         });
+        syncChartSeriesControls(gChartHistoryDetailsConsumed, canvasId);
         return;
     }
 
     gChartHistoryDetailsConsumed.data.labels = chart_data.labels;
     gChartHistoryDetailsConsumed.data.datasets = chart_data.datasets;
     gChartHistoryDetailsConsumed.options.locale = getLocale();
+    applyChartSeriesControlOptions(gChartHistoryDetailsConsumed, canvasId);
     gChartHistoryDetailsConsumed.resize();
     gChartHistoryDetailsConsumed.update("none");
+    syncChartSeriesControls(gChartHistoryDetailsConsumed, canvasId);
 }

@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815l"' in html
+    assert 'href="css/newdesign.css?build=20260815q"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -119,6 +119,8 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert 'motion.setAttribute("rotate", "auto")' in flow_script
     assert 'stroke-dasharray: none !important;' in design
     assert '.power-flow-arrow-stream.is-active' in design
+    assert ".power-flow-arrow:nth-child(even)" in design
+    assert ".power-flow-arrow:nth-child(3n + 1)" in design
     assert 'id="flow_track_solar_hub"' in html
     assert 'viewBox="0 0 860 360"' not in html
     assert "function layoutInfoGraphicPaths" in flow_script
@@ -131,7 +133,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert "function setPowerFlowLoadingState(loading)" in main_script
 
 
-def test_dashboard_flow_displays_inverter_load_without_redundant_subtitle():
+def test_dashboard_flow_displays_consistent_short_states():
     html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     design = (ROOT / "site" / "css" / "newdesign.css").read_text(
         encoding="utf-8"
@@ -153,15 +155,17 @@ def test_dashboard_flow_displays_inverter_load_without_redundant_subtitle():
     assert 'getMetricValueOrNull(payload, "ac_output_load_percent")' in flow_script
     assert 'formatInfoGraphicPercent(inverterLoad)' in flow_script
     assert 'formatInfoGraphicInverterMeta' not in flow_script
-    assert 'formatInfoGraphicPercent(inverterLoad),\n        "",' in flow_script
+    assert 'formatInfoGraphicPercent(inverterLoad),\n        inverterLoad != null' in flow_script
     assert 'batteryMeta += " · " + formatInfoGraphicPercent(batterySoc);' in flow_script
     assert 'batteryMeta += " | "' not in flow_script
-    assert 'flow_state_home_active' not in localization
-    assert 'flow_state_solar_active' not in localization
+    assert 'flow_state_production: ["Production"]' in localization
+    assert 'flow_state_consumption: ["Consommation"]' in localization
+    assert 'flow_state_inverter_load: ["Charge"]' in localization
     assert 'flow_state_charging: ["Charge"]' in localization
     assert 'flow_state_discharging: ["Décharge"]' in localization
-    assert flow_script.count('formatInfoGraphicPower(housePower) : "0 W",\n        "",') == 1
-    assert flow_script.count('formatInfoGraphicPower(solarPower) : "0 W",\n        "",') == 1
+    assert 'getInfoGraphicString("flow_state_production", "Production")' in flow_script
+    assert 'getInfoGraphicString("flow_state_consumption", "Consommation")' in flow_script
+    assert 'getInfoGraphicString("flow_state_inverter_load", "Charge")' in flow_script
     assert 'class="power-flow-node-progress"' in html
     assert 'max-width: 68rem;' in design
     assert '.power-flow-node-meta {' in design
@@ -225,6 +229,15 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "const shouldShowRefresh" not in main_script
     assert "hidden: true" not in chart_script
     assert "legendLabels.usePointStyle = true;" in chart_script
+    assert html.count('data-dashboard-series=') == 4
+    assert "function toggleDashboardChartSeries(datasetIndex)" in chart_script
+    assert 'window.matchMedia("(max-width: 767.98px), (pointer: coarse)")' in chart_script
+    assert "chart.options.plugins.legend.display = !touchLayout;" in chart_script
+    assert html.count("data-chart-series-controls=") == 5
+    assert "function syncChartSeriesControls(chart, canvasId)" in chart_script
+    assert "chart.toggleDataVisibility(item.index);" in chart_script
+    assert ".dashboard-settings-panel .app-panel-head-between" in design
+    assert "flex: 0 0 2.75rem;" in design
     assert "...STACKED_BAR_STYLE" in chart_script
     assert "borderRadius: 0," in chart_script
     assert "const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;" in chart_script
