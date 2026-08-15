@@ -21,7 +21,7 @@
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
     <link href="css/custom.css?build=20260815b" rel="stylesheet" />
-    <link href="css/newdesign.css?build=20260815g" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20260815h" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -79,12 +79,6 @@
                             <div id="sidebar_all_time">Total</div>
                         </a>
 
-                        <div class="sb-sidenav-menu-heading" id="sidebar_headline_misc">Divers</div>
-                        <a class="nav-link app-nav-link" data-nav-target="csv"
-                            href="#" onclick="showViewCsv(); collapseSidebar(); return false;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-file-csv"></i></div>
-                            <div id="sidebar_csv">Téléchargement CSV</div>
-                        </a>
                     </div>
                 </div>
             </nav>
@@ -386,7 +380,7 @@
                     <div class="app-view-head">
                         <div>
                             <h1 class="app-view-title" id="headline_history">...</h1>
-                            <p class="app-view-subtitle">Filtrer une période et inspecter production, consommation et courbes journalières.</p>
+                            <p class="app-view-subtitle">Consulter la production, la consommation et leur répartition sur la période sélectionnée.</p>
                             <div class="app-view-status" id="history_status" data-default-display="inline-flex"
                                 style="display: none;" role="status" aria-live="polite"></div>
                         </div>
@@ -396,6 +390,7 @@
                         <div class="app-panel-body">
                             <div class="history-toolbar-controls">
                                 <button id="selection_prev" type="button" class="app-icon-button"
+                                    aria-label="Période précédente" title="Période précédente"
                                     onclick="datePrev();">
                                     <i class="fa-solid fa-angle-left"></i>
                                 </button>
@@ -425,6 +420,7 @@
                                         onchange="onHistorySelectorChange();"></select>
                                 </div>
                                 <button id="selection_next" type="button" class="app-icon-button"
+                                    aria-label="Période suivante" title="Période suivante"
                                     onclick="dateNext();">
                                     <i class="fa-solid fa-angle-right"></i>
                                 </button>
@@ -441,7 +437,7 @@
                                 <div class="app-panel-body">
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
-                                            <tr class="fw-semibold">
+                                            <tr class="fw-semibold energy-metric-row energy-metric-solar is-emphasis">
                                                 <td><i class="fas fa-solar-panel me-1"></i></td>
                                                 <td id="history_text_produced">Énergie produite</td>
                                                 <td class="text-end" id="history_stat_produced">0.0</td>
@@ -454,19 +450,19 @@
                                     </div>
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
-                                            <tr>
+                                            <tr class="energy-metric-row energy-metric-grid">
                                                 <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
                                                 <td id="history_text_fedin">Vers le réseau</td>
                                                 <td class="text-end" id="history_stat_fedin">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="energy-metric-row energy-metric-home">
                                                 <td><i class="fas fa-lightbulb me-1"></i></td>
                                                 <td id="history_text_self_consumed">Utilisée par la maison</td>
                                                 <td class="text-end" id="history_stat_self_consumed">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="energy-metric-row energy-metric-battery">
                                                 <td><i class="fas fa-battery-half me-1"></i></td>
                                                 <td id="history_text_battery_charge">Vers la batterie (est.)</td>
                                                 <td class="text-end" id="history_stat_battery_charge">0.0</td>
@@ -484,7 +480,7 @@
                                 <div class="app-panel-body">
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
-                                            <tr class="fw-semibold">
+                                            <tr class="fw-semibold energy-metric-row energy-metric-home is-emphasis">
                                                 <td><i class="fas fa-lightbulb me-1"></i></td>
                                                 <td id="history_text_consumption_total">Consommation totale</td>
                                                 <td class="text-end" id="history_stat_consumption_total">0.0</td>
@@ -497,19 +493,19 @@
                                     </div>
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
-                                            <tr>
+                                            <tr class="energy-metric-row energy-metric-grid">
                                                 <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
                                                 <td id="history_text_consumption_grid">Depuis le réseau</td>
                                                 <td class="text-end" id="history_stat_consumption_grid">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
-                                            <tr>
+                                            <tr class="energy-metric-row energy-metric-solar">
                                                 <td><i class="fas fa-solar-panel me-1"></i></td>
                                                 <td id="history_text_consumption_self">Depuis le solaire (est.)</td>
                                                 <td class="text-end" id="history_stat_consumption_self">0.0</td>
                                                 <td class="text-end app-unit-cell">kWh</td>
                                             </tr>
-                                    <tr>
+                                            <tr class="energy-metric-row energy-metric-battery">
                                                 <td><i class="fas fa-battery-half me-1"></i></td>
                                                 <td id="history_text_consumption_battery">Depuis la batterie</td>
                                                 <td class="text-end" id="history_stat_consumption_battery">0.0</td>
@@ -528,7 +524,7 @@
                                     <div class="app-panel-body">
                                         <table class="table table-borderless app-data-table">
                                             <tbody>
-                                                <tr>
+                                                <tr class="energy-metric-row energy-metric-battery is-emphasis">
                                                     <td><i class="fas fa-leaf me-1"></i></td>
                                                     <td id="history_text_autarky">Autonomie atteinte</td>
                                                     <td class="text-end" id="history_stat_autarky">0</td>
@@ -552,13 +548,13 @@
                                                     <td class="text-end" id="history_stat_bill_total">0.0</td>
                                                     <td class="text-end app-unit-cell">€</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="energy-metric-row energy-metric-savings is-emphasis">
                                                     <td><i class="fas fa-lightbulb me-1"></i></td>
                                                     <td id="history_text_earned_self">Économie solaire</td>
                                                     <td class="text-end" id="history_stat_earned_self">0.0</td>
                                                     <td class="text-end app-unit-cell">€</td>
                                                 </tr>
-                                                <tr>
+                                                <tr class="energy-metric-row energy-metric-savings is-emphasis">
                                                     <td><i class="fas fa-plug-circle-bolt me-1"></i></td>
                                                     <td id="history_text_earned_feedin">Crédit injection</td>
                                                     <td class="text-end" id="history_stat_earned_feedin">0.0</td>
@@ -625,100 +621,6 @@
                     </div>
                 </div>
 
-                <div class="container-fluid px-4 app-view" id="view_csv" data-default-display="block">
-                    <div class="app-view-head">
-                        <div>
-                            <h1 class="app-view-title" id="headline_csv">Téléchargement CSV</h1>
-                            <p class="app-view-subtitle" id="csv_subtitle">Télécharger les rapports .csv</p>
-                        </div>
-                    </div>
-
-                    <section class="app-panel csv-panel">
-                        <div class="app-panel-body">
-                            <div class="csv-grid">
-                                <div>
-                                    <label class="app-section-label" id="csv_label_time_range">Période :</label>
-                                    <div class="app-toggle-group">
-                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_day"
-                                            autocomplete="off" checked onchange="updateCsvDateSelector();">
-                                        <label class="app-toggle-label" for="csv_range_rad_day"
-                                            id="csv_range_rad_lbl_day">Un jour</label>
-
-                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_month"
-                                            autocomplete="off" onchange="updateCsvDateSelector();">
-                                        <label class="app-toggle-label" for="csv_range_rad_month"
-                                            id="csv_range_rad_lbl_month">Un mois</label>
-
-                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_year"
-                                            autocomplete="off" onchange="updateCsvDateSelector();">
-                                        <label class="app-toggle-label" for="csv_range_rad_year"
-                                            id="csv_range_rad_lbl_year">Une année</label>
-
-                                        <input type="radio" class="btn-check" name="options_range" id="csv_range_rad_all"
-                                            autocomplete="off" onchange="updateCsvDateSelector();">
-                                        <label class="app-toggle-label" for="csv_range_rad_all"
-                                            id="csv_range_rad_lbl_all">Total</label>
-                                    </div>
-                                </div>
-
-                                <div class="csv-selectors">
-                                    <div id="csv_selection_year">
-                                        <select class="form-select app-select" id="csv_selection_year2"
-                                            onchange="onCsvSelectorChange();"></select>
-                                    </div>
-                                    <div id="csv_selection_month">
-                                        <select class="form-select app-select" id="csv_selection_month2"
-                                            onchange="onCsvSelectorChange();">
-                                            <option value="1" id="csv_cbx_month_1">Janvier</option>
-                                            <option value="2" id="csv_cbx_month_2">Février</option>
-                                            <option value="3" id="csv_cbx_month_3">Mars</option>
-                                            <option value="4" id="csv_cbx_month_4">Avril</option>
-                                            <option value="5" id="csv_cbx_month_5">Mai</option>
-                                            <option value="6" id="csv_cbx_month_6">Juin</option>
-                                            <option value="7" id="csv_cbx_month_7">Juillet</option>
-                                            <option value="8" id="csv_cbx_month_8">Août</option>
-                                            <option value="9" id="csv_cbx_month_9">Septembre</option>
-                                            <option value="10" id="csv_cbx_month_10">Octobre</option>
-                                            <option value="11" id="csv_cbx_month_11">Novembre</option>
-                                            <option value="12" id="csv_cbx_month_12">Décembre</option>
-                                        </select>
-                                    </div>
-                                    <div id="csv_selection_day">
-                                        <select class="form-select app-select" id="csv_selection_day2"
-                                            onchange="onCsvSelectorChange();"></select>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class="app-section-label" id="csv_label_resolution">Granularité :</label>
-                                    <div class="app-toggle-group">
-                                        <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_day"
-                                            autocomplete="off" checked>
-                                        <label class="app-toggle-label" for="csv_res_rad_day"
-                                            id="csv_res_rad_lbl_day">Jours individuels</label>
-
-                                        <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_month"
-                                            autocomplete="off">
-                                        <label class="app-toggle-label" for="csv_res_rad_month"
-                                            id="csv_res_rad_lbl_month">Agrégé par mois</label>
-
-                                        <input type="radio" class="btn-check" name="options_res" id="csv_res_rad_year"
-                                            autocomplete="off">
-                                        <label class="app-toggle-label" for="csv_res_rad_year"
-                                            id="csv_res_rad_lbl_year">Agrégé par année</label>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <button type="button" class="app-primary-button" onclick="downloadCsv();">
-                                        <i class="fas fa-download me-2"></i>
-                                        <span id="csv_button_download">Télécharger</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
             </main>
         </div>
     </div>
@@ -726,15 +628,14 @@
     <script src="lib/bootstrap.bundle.min.js?build=20260404b"></script>
     <script src="js/version.js?build=20260404b"></script>
     <script src="js/sidebar.js?build=20260405b"></script>
-    <script src="js/localization.js?build=20260815c"></script>
-    <script src="js/csv.js?build=20260708a"></script>
+    <script src="js/localization.js?build=20260815d"></script>
     <script src="lib/hammer.min.js?build=20260404b"></script>
     <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
     <script src="js/chart_factory.js?build=20260407h"></script>
-    <script src="js/info_graphic.js?build=20260815d"></script>
-    <script src="js/main.js?build=20260815e"></script>
+    <script src="js/info_graphic.js?build=20260815e"></script>
+    <script src="js/main.js?build=20260815f"></script>
 </body>
 
 </html>

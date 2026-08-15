@@ -328,29 +328,6 @@ function resetInfoGraphic() {
     queueInfoGraphicLabelLayout();
 }
 
-function localizeOperationMode(value) {
-    if (value == null || value === "")
-        return INFO_GRAPHIC_PLACEHOLDER;
-    if (typeof localizeDashboardValue === "function")
-        return String(localizeDashboardValue("metric_operation_mode", value));
-    return String(value);
-}
-
-function localizeCompactOperationMode(value) {
-    const compactMode = localizeOperationMode(value).replace(/^Mode\s+/i, "");
-    if (compactMode === INFO_GRAPHIC_PLACEHOLDER)
-        return compactMode;
-    return compactMode.charAt(0).toLocaleUpperCase("fr-FR") + compactMode.slice(1);
-}
-
-function formatInfoGraphicInverterMeta(value) {
-    const loadLabel = getInfoGraphicString("flow_inverter_load", "Load");
-    const operationMode = localizeCompactOperationMode(value);
-    if (operationMode === INFO_GRAPHIC_PLACEHOLDER)
-        return loadLabel;
-    return loadLabel + " · " + operationMode;
-}
-
 function renderInfoGraphicFromOverview(payload) {
     const root = getInfoGraphicRoot();
     if (root == null)
@@ -425,7 +402,7 @@ function renderInfoGraphicFromOverview(payload) {
     }
 
     if (batterySoc != null && batteryMeta !== getInfoGraphicString("flow_state_idle", "Standby"))
-        batteryMeta += " | " + formatInfoGraphicPercent(batterySoc);
+        batteryMeta += " · " + formatInfoGraphicPercent(batterySoc);
 
     root.classList.toggle("is-stale", payload?.current_data_stale === true);
 
@@ -441,7 +418,7 @@ function renderInfoGraphicFromOverview(payload) {
     setInfoGraphicNode(
         "hub",
         formatInfoGraphicPercent(inverterLoad),
-        formatInfoGraphicInverterMeta(payload?.device?.operation_mode),
+        "",
         true
     );
     setInfoGraphicInverterLoad(inverterLoad);

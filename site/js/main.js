@@ -278,8 +278,6 @@ function normalizeViewState(candidate) {
     const view = (candidate?.view || "").toLowerCase();
     if (view === "statistics")
         return { view: "statistics" };
-    if (view === "csv")
-        return { view: "csv" };
     if (view === "history")
         return {
             view: "history",
@@ -304,8 +302,6 @@ function getCurrentViewState() {
     switch (gCurrentView) {
         case "statistics":
             return { view: "statistics" };
-        case "csv":
-            return { view: "csv" };
         case "history":
             return {
                 view: "history",
@@ -382,9 +378,6 @@ function applyInitialViewState() {
         case "history":
             showViewHistory(state.history, { persist: false, initialDate: state.date });
             break;
-        case "csv":
-            showViewCsv({ persist: false });
-            break;
         case "dashboard":
         default:
             showViewDashboard({ persist: false });
@@ -408,7 +401,6 @@ window.addEventListener('DOMContentLoaded', event => {
     setInterval(refreshTelemetryStatus, DATA_REFRESH_INTERVAL_MS);
     setInterval(refreshLiveHistoryStats, HISTORY_LIVE_REFRESH_MS);
     initSelectionBoxes();
-    updateCsvDateSelector();
     setVersion();
     setName();
     gAppInitialized = true;
@@ -1346,16 +1338,6 @@ function getDateAvailabilityForMode(mode) {
     }
 }
 
-function getCsvRangeMode() {
-    if (document.getElementById("csv_range_rad_day")?.checked === true)
-        return histories.DAY;
-    if (document.getElementById("csv_range_rad_month")?.checked === true)
-        return histories.MONTH;
-    if (document.getElementById("csv_range_rad_year")?.checked === true)
-        return histories.YEAR;
-    return histories.ALL;
-}
-
 function getSelectionControlId(prefix, name) {
     return prefix + "selection_" + name + "2";
 }
@@ -1580,13 +1562,6 @@ function applyHistorySelectionKey(desiredKey) {
     return resolvedKey;
 }
 
-function applyCsvSelectionKey(desiredKey) {
-    const mode = getCsvRangeMode();
-    if (mode === histories.ALL)
-        return null;
-    return applyPeriodKeyToSelectors("csv_", mode, desiredKey);
-}
-
 function applyDateBoundsToSelectors(dates) {
     if (gDateBoundsLoaded)
         return;
@@ -1600,7 +1575,6 @@ function applyDateBoundsToSelectors(dates) {
         gCurDate = createSelectionDate(latestDay.year, latestDay.month, latestDay.day);
 
     applyHistorySelectionKey(getPeriodKeyFromDate(gCurHistory, gCurDate));
-    updateCsvDateSelector();
 }
 
 async function ensureDateBoundsLoaded() {
@@ -2113,7 +2087,6 @@ function refreshLocalizedContent() {
     if (gDateBoundsLoaded) {
         if (gCurrentView === "history" && gCurHistory !== histories.ALL)
             applyHistorySelectionKey(getPeriodKeyFromSelectors(gCurHistory));
-        updateCsvDateSelector();
     }
 
     if (typeof resetChartsForLanguageChange === "function")
@@ -2138,7 +2111,6 @@ function showViewDashboard(options = {}) {
     setElementVisible("view_dashboard", true);
     setElementVisible("view_statistics", false);
     setElementVisible("view_history", false);
-    setElementVisible("view_csv", false);
     setInfoGraphicEnabled(true);
     gCurrentView = "dashboard";
     gDashboardVisible = true;
@@ -2154,7 +2126,6 @@ function showViewStatistics(options = {}) {
     setElementVisible("view_dashboard", false);
     setElementVisible("view_statistics", true);
     setElementVisible("view_history", false);
-    setElementVisible("view_csv", false);
     setInfoGraphicEnabled(false);
     gCurrentView = "statistics";
     gDashboardVisible = false;
@@ -2170,7 +2141,6 @@ function showViewHistory(mode, options = {}) {
     setElementVisible("view_dashboard", false);
     setElementVisible("view_statistics", false);
     setElementVisible("view_history", true);
-    setElementVisible("view_csv", false);
     setInfoGraphicEnabled(false);
     gCurrentView = "history";
     gDashboardVisible = false;
@@ -2282,90 +2252,10 @@ function showViewHistory(mode, options = {}) {
     queueVisibleChartResize();
 }
 
-function showViewCsv(options = {}) {
-    setElementVisible("view_dashboard", false);
-    setElementVisible("view_statistics", false);
-    setElementVisible("view_history", false);
-    setElementVisible("view_csv", true);
-    setInfoGraphicEnabled(false);
-    gCurrentView = "csv";
-    gDashboardVisible = false;
-    setActiveSidebarLink("csv");
-    hideFloatingInfoTooltip(true);
-    ensureDateBoundsLoaded().catch(() => { });
-    if (options.persist !== false)
-        persistCurrentViewState();
-    queueVisibleChartResize();
-}
-
-function updateCsvDateSelector() {
-    if (document.getElementById("csv_range_rad_day").checked == true) {
-        setElementVisible("csv_selection_year", true);
-        setElementVisible("csv_selection_month", true);
-        setElementVisible("csv_selection_day", true);
-
-        setElementEnabled("csv_res_rad_day", true);
-        setElementEnabled("csv_res_rad_month", false);
-        setElementEnabled("csv_res_rad_year", false);
-
-        if (isElementChecked("csv_res_rad_month") || isElementChecked("csv_res_rad_year"))
-            setElementChecked("csv_res_rad_day", true);
-    }
-    else if (document.getElementById("csv_range_rad_month").checked == true) {
-        setElementVisible("csv_selection_year", true);
-        setElementVisible("csv_selection_month", true);
-        setElementVisible("csv_selection_day", false);
-
-        setElementEnabled("csv_res_rad_day", true);
-        setElementEnabled("csv_res_rad_month", false);
-        setElementEnabled("csv_res_rad_year", false);
-
-        if (isElementChecked("csv_res_rad_month") || isElementChecked("csv_res_rad_year"))
-            setElementChecked("csv_res_rad_day", true);
-    }
-    else if (document.getElementById("csv_range_rad_year").checked == true) {
-        setElementVisible("csv_selection_year", true);
-        setElementVisible("csv_selection_month", false);
-        setElementVisible("csv_selection_day", false);
-
-        setElementEnabled("csv_res_rad_day", true);
-        setElementEnabled("csv_res_rad_month", true);
-        setElementEnabled("csv_res_rad_year", false);
-
-        if (isElementChecked("csv_res_rad_year"))
-            setElementChecked("csv_res_rad_month", true);
-    }
-    else {
-        setElementVisible("csv_selection_year", false);
-        setElementVisible("csv_selection_month", false);
-        setElementVisible("csv_selection_day", false);
-
-        setElementEnabled("csv_res_rad_day", true);
-        setElementEnabled("csv_res_rad_month", true);
-        setElementEnabled("csv_res_rad_year", true);
-    }
-
-    if (gDateBoundsLoaded) {
-        const mode = getCsvRangeMode();
-        if (mode !== histories.ALL)
-            applyCsvSelectionKey(getPeriodKeyFromSelectors(mode, "csv_"));
-    }
-}
-
-
 function onHistorySelectorChange() {
     const resolvedKey = applyHistorySelectionKey(getPeriodKeyFromSelectors(gCurHistory));
     if (resolvedKey != null)
         updateHistoryStats();
-}
-
-function onCsvSelectorChange() {
-    if (!gDateBoundsLoaded)
-        return;
-    const mode = getCsvRangeMode();
-    if (mode === histories.ALL)
-        return;
-    applyCsvSelectionKey(getPeriodKeyFromSelectors(mode, "csv_"));
 }
 
 function datePrev() {
@@ -2415,21 +2305,6 @@ function setElementVisible(name, visible) {
     if (computedDisplay != "none")
         element.dataset.defaultDisplay = computedDisplay;
     element.style.display = "none";
-}
-
-function setElementEnabled(name, enabled) {
-    if (enabled)
-        document.getElementById(name).removeAttribute("disabled");
-    else
-        document.getElementById(name).setAttribute("disabled", "");
-}
-
-function isElementChecked(name) {
-    return document.getElementById(name).checked;
-}
-
-function setElementChecked(name, checked) {
-    document.getElementById(name).checked = checked;
 }
 
 function addSelectionItem(control, name, value) {

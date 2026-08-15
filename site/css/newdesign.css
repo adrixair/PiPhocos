@@ -372,23 +372,41 @@ body {
   font-weight: 740;
 }
 
-#history_stat_produced {
-  color: var(--app-flow-solar);
+.energy-metric-row {
+  --energy-metric-tone: var(--app-text-muted);
 }
 
-#history_stat_consumption_total {
-  color: var(--app-flow-home);
+.energy-metric-row > td:first-child {
+  color: var(--energy-metric-tone);
+}
+
+.energy-metric-row.is-emphasis > td:nth-child(3) {
+  color: var(--energy-metric-tone);
+}
+
+.energy-metric-solar {
+  --energy-metric-tone: var(--app-flow-solar);
+}
+
+.energy-metric-home {
+  --energy-metric-tone: var(--app-flow-home);
+}
+
+.energy-metric-grid {
+  --energy-metric-tone: var(--app-flow-grid);
+}
+
+.energy-metric-battery {
+  --energy-metric-tone: var(--app-flow-battery);
+}
+
+.energy-metric-savings {
+  --energy-metric-tone: #128467;
 }
 
 #history_stat_autarky {
-  color: var(--app-flow-battery);
   font-size: 1.2rem;
   font-weight: 740;
-}
-
-#history_stat_earned_self,
-#history_stat_earned_feedin {
-  color: #128467;
 }
 
 #history_stat_earned_total {
@@ -417,6 +435,10 @@ body {
 .dashboard-row-icon,
 .app-data-table td:first-child i {
   color: #66707a;
+}
+
+.energy-metric-row > td:first-child i {
+  color: var(--energy-metric-tone);
 }
 
 .dashboard-info-badge {
@@ -656,6 +678,10 @@ body {
   font-size: 0.7rem;
 }
 
+.power-flow-node-meta:empty {
+  display: none;
+}
+
 .power-flow-node-solar {
   align-self: center;
   grid-column: 1;
@@ -732,8 +758,7 @@ body {
   opacity: 0 !important;
 }
 
-.history-toolbar .app-panel-body,
-.csv-panel .app-panel-body {
+.history-toolbar .app-panel-body {
   padding: 0.85rem var(--app-panel-padding);
 }
 
@@ -786,23 +811,6 @@ body {
   border-color: rgba(243, 106, 16, 0.34);
   color: var(--app-accent-strong);
   font-weight: 680;
-}
-
-.csv-panel {
-  max-width: 980px;
-}
-
-.csv-grid {
-  gap: 1.35rem;
-}
-
-.csv-panel .app-toggle-group {
-  gap: 0.55rem;
-}
-
-.csv-panel .app-toggle-label {
-  border-radius: 6px;
-  min-height: 2.8rem;
 }
 
 .app-primary-button {
@@ -1076,8 +1084,7 @@ body {
     transform: scale(0.8);
   }
 
-  .history-toolbar .app-panel-body,
-  .csv-panel .app-panel-body {
+  .history-toolbar .app-panel-body {
     padding: 0.72rem;
   }
 
@@ -1130,15 +1137,6 @@ body {
     font-size: 1.08rem;
   }
 
-  .csv-panel .app-toggle-group {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .csv-panel .app-toggle-label {
-    font-size: 0.8rem;
-    min-height: 2.65rem;
-    padding-inline: 0.55rem;
-  }
 }
 
 @media (max-width: 419.98px) {

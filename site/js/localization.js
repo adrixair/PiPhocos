@@ -14,14 +14,11 @@ let translations = [
     ["sidebar_by_month", "Par mois"],
     ["sidebar_by_year", "Par année"],
     ["sidebar_all_time", "Total"],
-    ["sidebar_headline_misc", "Divers"],
-    ["sidebar_csv", "Téléchargement CSV"],
     ["sidebar_live_telemetry", ""],
 
     // Titres
     ["headline_dashboard", "Tableau de bord"],
     ["headline_statistics", "Statistiques"],
-    ["headline_csv", "Téléchargement CSV"],
 
     // Statistiques
     ["stats_card_highest_prod", "Production maximale"],
@@ -69,19 +66,6 @@ let translations = [
     ["history_text_autarky", "Autonomie atteinte"],
     ["history_card_high_res_data_text", "Courbe du jour"],
 
-    // Telechargement CSV
-    ["csv_subtitle", "Télécharger les rapports .csv"],
-    ["csv_label_time_range", "Période :"],
-    ["csv_label_resolution", "Granularité :"],
-    ["csv_range_rad_lbl_day", "Un jour"],
-    ["csv_range_rad_lbl_month", "Un mois"],
-    ["csv_range_rad_lbl_year", "Une année"],
-    ["csv_range_rad_lbl_all", "Total"],
-    ["csv_res_rad_lbl_day", "Jours individuels"],
-    ["csv_res_rad_lbl_month", "Agrégé par mois"],
-    ["csv_res_rad_lbl_year", "Agrégé par année"],
-    ["csv_button_download", "Télécharger"],
-
     // Liste des mois
     ["cbx_month_1", "Janvier"],
     ["cbx_month_2", "Février"],
@@ -95,20 +79,6 @@ let translations = [
     ["cbx_month_10", "Octobre"],
     ["cbx_month_11", "Novembre"],
     ["cbx_month_12", "Décembre"],
-
-    // Liste des mois CSV
-    ["csv_cbx_month_1", "Janvier"],
-    ["csv_cbx_month_2", "Février"],
-    ["csv_cbx_month_3", "Mars"],
-    ["csv_cbx_month_4", "Avril"],
-    ["csv_cbx_month_5", "Mai"],
-    ["csv_cbx_month_6", "Juin"],
-    ["csv_cbx_month_7", "Juillet"],
-    ["csv_cbx_month_8", "Août"],
-    ["csv_cbx_month_9", "Septembre"],
-    ["csv_cbx_month_10", "Octobre"],
-    ["csv_cbx_month_11", "Novembre"],
-    ["csv_cbx_month_12", "Décembre"],
 
     // Information
     ["info_no_data", "Aucune donnée n'est disponible pour la période sélectionnée."],
@@ -491,10 +461,9 @@ let genericStrings = {
     flow_state_import: ["Import"],
     flow_state_export: ["Injection"],
     flow_state_available: ["Disponible"],
-    flow_state_home_active: ["Charge en cours"],
-    flow_state_charging: ["Charge"],
-    flow_state_discharging: ["Décharge"],
-    flow_inverter_load: ["Charge"],
+    flow_state_home_active: ["Consommation active"],
+    flow_state_charging: ["En charge"],
+    flow_state_discharging: ["En décharge"],
     flow_state_live: ["Temps réel"],
     flow_state_delayed: ["Hors live"],
     telemetry_status_connected: ["Phocos connecté"],

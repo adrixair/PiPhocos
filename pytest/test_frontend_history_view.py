@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815g"' in html
+    assert 'href="css/newdesign.css?build=20260815h"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -148,10 +148,49 @@ def test_dashboard_flow_displays_inverter_load_without_redundant_subtitle():
     assert 'getElementById("dashboard_subtitle_time")' not in main_script
     assert 'getMetricValueOrNull(payload, "ac_output_load_percent")' in flow_script
     assert 'formatInfoGraphicPercent(inverterLoad)' in flow_script
-    assert 'formatInfoGraphicInverterMeta(payload?.device?.operation_mode)' in flow_script
+    assert 'formatInfoGraphicInverterMeta' not in flow_script
+    assert 'formatInfoGraphicPercent(inverterLoad),\n        "",' in flow_script
+    assert 'batteryMeta += " · " + formatInfoGraphicPercent(batterySoc);' in flow_script
+    assert 'batteryMeta += " | "' not in flow_script
+    assert 'flow_state_home_active: ["Consommation active"]' in localization
+    assert 'flow_state_home_active: ["Charge en cours"]' not in localization
     assert 'class="power-flow-node-progress"' in html
     assert 'max-width: 65rem;' in design
     assert 'getInfoGraphicString("flow_state_live"' not in flow_script
+
+
+def test_csv_download_is_removed_from_the_frontend():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    main_script = (ROOT / "site" / "js" / "main.js").read_text(
+        encoding="utf-8"
+    )
+    localization = (ROOT / "site" / "js" / "localization.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'data-nav-target="csv"' not in html
+    assert 'id="view_csv"' not in html
+    assert 'js/csv.js' not in html
+    assert "Téléchargement CSV" not in html + localization
+    assert "showViewCsv" not in main_script
+    assert "updateCsvDateSelector" not in main_script
+    assert not (ROOT / "site" / "js" / "csv.js").exists()
+
+
+def test_history_energy_colors_are_repeated_by_their_icons():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    design = (ROOT / "site" / "css" / "newdesign.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "energy-metric-row energy-metric-solar is-emphasis" in html
+    assert "energy-metric-row energy-metric-home is-emphasis" in html
+    assert "energy-metric-row energy-metric-grid" in html
+    assert "energy-metric-row energy-metric-battery" in html
+    assert ".energy-metric-row > td:first-child" in design
+    assert ".energy-metric-row.is-emphasis > td:nth-child(3)" in design
+    assert "#history_stat_produced {" not in design
+    assert "#history_stat_consumption_total {" not in design
 
 
 def test_new_design_formats_invoice_amounts_to_cents():
