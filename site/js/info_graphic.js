@@ -1,10 +1,11 @@
 var gInfoGraphicEnabled = false;
 let gInfoGraphicLabelLayoutFrame = null;
+let gInfoGraphicResizeObserver = null;
 
 const INFO_GRAPHIC_ACTIVE_THRESHOLD_W = 20;
 const INFO_GRAPHIC_PLACEHOLDER = "--";
-const INFO_GRAPHIC_ARROW_COUNT = 7;
-const INFO_GRAPHIC_ARROW_DURATION_S = 2.8;
+const INFO_GRAPHIC_ARROW_COUNT = 10;
+const INFO_GRAPHIC_ARROW_DURATION_S = 3.2;
 const INFO_GRAPHIC_LINK_NAMES = [
     "solar_hub",
     "grid_hub",
@@ -64,7 +65,8 @@ function ensureInfoGraphicArrowStreams() {
         for (let index = 0; index < INFO_GRAPHIC_ARROW_COUNT; index++) {
             const arrow = document.createElementNS(svgNamespace, "path");
             arrow.setAttribute("class", "power-flow-arrow");
-            arrow.setAttribute("d", "M -5 -3.5 L 4 0 L -5 3.5 L -2 0 Z");
+            arrow.setAttribute("d", "M -5 -3.5 L 1 0 L -5 3.5");
+            arrow.setAttribute("vector-effect", "non-scaling-stroke");
 
             const motion = document.createElementNS(svgNamespace, "animateMotion");
             motion.setAttribute("dur", INFO_GRAPHIC_ARROW_DURATION_S + "s");
@@ -109,16 +111,79 @@ function getInfoGraphicString(id, fallback) {
     return fallback;
 }
 
+function getInfoGraphicNodeAnchor(rootRect, nodeName, side, verticalRatio = 0.5) {
+    const nodeRect = document.getElementById("flow_node_" + nodeName)?.getBoundingClientRect();
+    if (nodeRect == null)
+        return null;
+
+    return {
+        x: (side === "right" ? nodeRect.right : nodeRect.left) - rootRect.left,
+        y: nodeRect.top - rootRect.top + nodeRect.height * verticalRatio,
+    };
+}
+
+function buildInfoGraphicCurve(start, end) {
+    const horizontalDistance = Math.abs(end.x - start.x);
+    const direction = end.x >= start.x ? 1 : -1;
+    const controlOffset = Math.max(24, Math.min(160, horizontalDistance * 0.42));
+
+    return [
+        "M", start.x.toFixed(2), start.y.toFixed(2),
+        "C", (start.x + direction * controlOffset).toFixed(2), start.y.toFixed(2),
+        (end.x - direction * controlOffset).toFixed(2), end.y.toFixed(2),
+        end.x.toFixed(2), end.y.toFixed(2),
+    ].join(" ");
+}
+
+function setInfoGraphicPath(pathId, start, end) {
+    const path = document.getElementById(pathId);
+    if (path == null || start == null || end == null)
+        return;
+    path.setAttribute("d", buildInfoGraphicCurve(start, end));
+}
+
+function layoutInfoGraphicPaths(root, svg, svgRect) {
+    const rootRect = root.getBoundingClientRect();
+    svg.setAttribute("viewBox", `0 0 ${svgRect.width.toFixed(2)} ${svgRect.height.toFixed(2)}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    const solar = getInfoGraphicNodeAnchor(rootRect, "solar", "right");
+    const grid = getInfoGraphicNodeAnchor(rootRect, "grid", "right");
+    const hubInputSolar = getInfoGraphicNodeAnchor(rootRect, "hub", "left", 0.32);
+    const hubInputGrid = getInfoGraphicNodeAnchor(rootRect, "hub", "left", 0.68);
+    const hubOutputHouse = getInfoGraphicNodeAnchor(rootRect, "hub", "right", 0.32);
+    const hubOutputBattery = getInfoGraphicNodeAnchor(rootRect, "hub", "right", 0.68);
+    const house = getInfoGraphicNodeAnchor(rootRect, "home", "left");
+    const battery = getInfoGraphicNodeAnchor(rootRect, "battery", "left");
+
+    setInfoGraphicPath("flow_track_solar_hub", solar, hubInputSolar);
+    setInfoGraphicPath("flow_link_solar_hub", solar, hubInputSolar);
+
+    setInfoGraphicPath("flow_track_grid_hub", grid, hubInputGrid);
+    setInfoGraphicPath("flow_link_grid_hub", grid, hubInputGrid);
+    setInfoGraphicPath("flow_link_hub_grid_export", hubInputGrid, grid);
+
+    setInfoGraphicPath("flow_track_hub_house", hubOutputHouse, house);
+    setInfoGraphicPath("flow_link_hub_house", hubOutputHouse, house);
+
+    setInfoGraphicPath("flow_track_hub_battery", hubOutputBattery, battery);
+    setInfoGraphicPath("flow_link_hub_battery_charge", hubOutputBattery, battery);
+    setInfoGraphicPath("flow_link_battery_hub_discharge", battery, hubOutputBattery);
+}
+
 function layoutInfoGraphicLabels() {
     const root = getInfoGraphicRoot();
     const svg = root?.querySelector(".power-flow-svg");
-    const viewBox = svg?.viewBox?.baseVal;
     const svgRect = svg?.getBoundingClientRect();
 
     gInfoGraphicLabelLayoutFrame = null;
 
-    if (root == null || svg == null || viewBox == null || svgRect == null || svgRect.width <= 0 || svgRect.height <= 0)
+    if (root == null || svg == null || svgRect == null || svgRect.width <= 0 || svgRect.height <= 0)
         return;
+
+    layoutInfoGraphicPaths(root, svg, svgRect);
+
+    const viewBox = svg.viewBox.baseVal;
 
     const scaleX = svgRect.width / viewBox.width;
     const scaleY = svgRect.height / viewBox.height;
@@ -202,6 +267,21 @@ function setInfoGraphicBatteryLevel(percent) {
     batteryNode.style.setProperty("--battery-fill-level", (clampedPercent / 100).toFixed(3));
 }
 
+function setInfoGraphicInverterLoad(percent) {
+    const inverterNode = document.getElementById("flow_node_hub");
+    if (inverterNode == null)
+        return;
+
+    const numericPercent = Number(percent);
+    if (percent == null || !Number.isFinite(numericPercent)) {
+        inverterNode.style.setProperty("--inverter-load-level", "0");
+        return;
+    }
+
+    const clampedPercent = Math.max(0, Math.min(100, numericPercent));
+    inverterNode.style.setProperty("--inverter-load-level", (clampedPercent / 100).toFixed(3));
+}
+
 function setInfoGraphicLink(name, power, active) {
     ensureInfoGraphicArrowStreams();
     const link = document.getElementById("flow_link_" + name);
@@ -216,7 +296,7 @@ function setInfoGraphicLink(name, power, active) {
     link.classList.toggle("is-active", shouldShow);
     arrows?.classList.toggle("is-active", shouldShow);
     link.style.opacity = shouldShow ? intensity.toFixed(2) : "0";
-    link.style.strokeWidth = shouldShow ? (2.4 + intensity * 0.8).toFixed(2) : "3";
+    link.style.strokeWidth = shouldShow ? (1.9 + intensity * 0.55).toFixed(2) : "2";
 
     if (label != null) {
         label.textContent = shouldShow ? formatInfoGraphicPower(power) : "";
@@ -237,6 +317,7 @@ function resetInfoGraphic() {
     setInfoGraphicNode("home", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
     setInfoGraphicNode("battery", INFO_GRAPHIC_PLACEHOLDER, getInfoGraphicString("flow_state_idle", "Standby"), false);
     setInfoGraphicBatteryLevel(null);
+    setInfoGraphicInverterLoad(null);
 
     setInfoGraphicLink("solar_hub", 0, false);
     setInfoGraphicLink("grid_hub", 0, false);
@@ -262,6 +343,14 @@ function localizeCompactOperationMode(value) {
     return compactMode.charAt(0).toLocaleUpperCase("fr-FR") + compactMode.slice(1);
 }
 
+function formatInfoGraphicInverterMeta(value) {
+    const loadLabel = getInfoGraphicString("flow_inverter_load", "Load");
+    const operationMode = localizeCompactOperationMode(value);
+    if (operationMode === INFO_GRAPHIC_PLACEHOLDER)
+        return loadLabel;
+    return loadLabel + " · " + operationMode;
+}
+
 function renderInfoGraphicFromOverview(payload) {
     const root = getInfoGraphicRoot();
     if (root == null)
@@ -269,8 +358,7 @@ function renderInfoGraphicFromOverview(payload) {
 
     const solarPower = Math.max(0, getMetricValue(payload, "pv_power_w"));
     const housePower = Math.max(0, getMetricValue(payload, "ac_output_active_power_w"));
-    const totalOutputPower = getMetricValueOrNull(payload, "total_output_active_power_w");
-    const inverterPower = Math.max(0, totalOutputPower ?? housePower);
+    const inverterLoad = getMetricValueOrNull(payload, "ac_output_load_percent");
     const batteryChargePower = Math.max(0, getMetricValue(payload, "battery_charge_power_w"));
     const batteryDischargePower = Math.max(0, getMetricValue(payload, "battery_discharge_power_w"));
     const batterySoc = getMetricValueOrNull(payload, "battery_state_of_charge_percent");
@@ -352,10 +440,11 @@ function renderInfoGraphicFromOverview(payload) {
     setInfoGraphicNode("grid", gridValue, gridMeta, gridActive);
     setInfoGraphicNode(
         "hub",
-        formatInfoGraphicPower(inverterPower),
-        localizeCompactOperationMode(payload?.device?.operation_mode),
+        formatInfoGraphicPercent(inverterLoad),
+        formatInfoGraphicInverterMeta(payload?.device?.operation_mode),
         true
     );
+    setInfoGraphicInverterLoad(inverterLoad);
     setInfoGraphicNode(
         "home",
         homeActive ? formatInfoGraphicPower(housePower) : "0 W",
@@ -409,6 +498,7 @@ function updateInfoGraphic(payload, gridConsumptionW, fedInW, pvConsumptionW = n
         live: {
             pv_power_w: { value: generatedW },
             ac_output_active_power_w: { value: Math.max(0, pvToHomeW) + Math.max(0, gridW) },
+            ac_output_load_percent: { value: null },
             battery_charge_power_w: { value: 0 },
             battery_discharge_power_w: { value: 0 },
             battery_state_of_charge_percent: { value: null },
@@ -424,5 +514,13 @@ function updateInfoGraphic(payload, gridConsumptionW, fedInW, pvConsumptionW = n
 window.addEventListener("resize", queueInfoGraphicLabelLayout);
 window.addEventListener("DOMContentLoaded", () => {
     ensureInfoGraphicArrowStreams();
+    if (typeof ResizeObserver === "function") {
+        gInfoGraphicResizeObserver?.disconnect();
+        gInfoGraphicResizeObserver = new ResizeObserver(queueInfoGraphicLabelLayout);
+        const root = getInfoGraphicRoot();
+        if (root != null)
+            gInfoGraphicResizeObserver.observe(root);
+    }
+    document.fonts?.ready.then(queueInfoGraphicLabelLayout);
     queueInfoGraphicLabelLayout();
 });

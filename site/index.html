@@ -21,7 +21,7 @@
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
     <link href="css/custom.css?build=20260815b" rel="stylesheet" />
-    <link href="css/newdesign.css?build=20260815e" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20260815g" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -105,31 +105,24 @@
                         </div>
                         <div class="app-panel-body">
                             <div class="power-flow-map" id="dashboard_power_flow">
-                                <svg class="power-flow-svg" viewBox="0 0 860 360" preserveAspectRatio="none"
-                                    aria-hidden="true">
-                                    <path class="power-flow-track" d="M 226 105 C 292 105, 318 160, 380 160" />
-                                    <path class="power-flow-track" d="M 226 255 C 292 255, 318 200, 380 200" />
-                                    <path class="power-flow-track" d="M 480 160 C 542 160, 568 105, 634 105" />
-                                    <path class="power-flow-track" d="M 480 200 C 542 200, 568 255, 634 255" />
+                                <svg class="power-flow-svg" aria-hidden="true">
+                                    <path id="flow_track_solar_hub" class="power-flow-track" />
+                                    <path id="flow_track_grid_hub" class="power-flow-track" />
+                                    <path id="flow_track_hub_house" class="power-flow-track" />
+                                    <path id="flow_track_hub_battery" class="power-flow-track" />
 
                                     <path id="flow_link_solar_hub"
-                                        class="power-flow-link power-flow-link-solar power-flow-link-forward"
-                                        d="M 226 105 C 292 105, 318 160, 380 160" />
+                                        class="power-flow-link power-flow-link-solar power-flow-link-forward" />
                                     <path id="flow_link_grid_hub"
-                                        class="power-flow-link power-flow-link-grid power-flow-link-forward"
-                                        d="M 226 255 C 292 255, 318 200, 380 200" />
+                                        class="power-flow-link power-flow-link-grid power-flow-link-forward" />
                                     <path id="flow_link_hub_grid_export"
-                                        class="power-flow-link power-flow-link-grid power-flow-link-forward"
-                                        d="M 380 200 C 318 200, 292 255, 226 255" />
+                                        class="power-flow-link power-flow-link-grid power-flow-link-forward" />
                                     <path id="flow_link_hub_house"
-                                        class="power-flow-link power-flow-link-house power-flow-link-forward"
-                                        d="M 480 160 C 542 160, 568 105, 634 105" />
+                                        class="power-flow-link power-flow-link-house power-flow-link-forward" />
                                     <path id="flow_link_hub_battery_charge"
-                                        class="power-flow-link power-flow-link-battery power-flow-link-forward"
-                                        d="M 480 200 C 542 200, 568 255, 634 255" />
+                                        class="power-flow-link power-flow-link-battery power-flow-link-forward" />
                                     <path id="flow_link_battery_hub_discharge"
-                                        class="power-flow-link power-flow-link-battery power-flow-link-forward"
-                                        d="M 634 255 C 568 255, 542 200, 480 200" />
+                                        class="power-flow-link power-flow-link-battery power-flow-link-forward" />
                                 </svg>
 
                                 <div class="power-flow-connection-label power-flow-connection-label-solar power-flow-connection-label-solar-hub"
@@ -180,6 +173,9 @@
                                     <div class="power-flow-node-copy">
                                         <span class="power-flow-node-label" id="dash_flow_node_hub">Onduleur</span>
                                         <span class="power-flow-node-value" id="dash_flow_value_hub">--</span>
+                                        <span class="power-flow-node-progress" aria-hidden="true">
+                                            <span class="power-flow-node-progress-value"></span>
+                                        </span>
                                         <span class="power-flow-node-meta" id="dash_flow_meta_hub">--</span>
                                     </div>
                                 </article>
@@ -730,14 +726,14 @@
     <script src="lib/bootstrap.bundle.min.js?build=20260404b"></script>
     <script src="js/version.js?build=20260404b"></script>
     <script src="js/sidebar.js?build=20260405b"></script>
-    <script src="js/localization.js?build=20260815b"></script>
+    <script src="js/localization.js?build=20260815c"></script>
     <script src="js/csv.js?build=20260708a"></script>
     <script src="lib/hammer.min.js?build=20260404b"></script>
     <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
     <script src="js/chart_factory.js?build=20260407h"></script>
-    <script src="js/info_graphic.js?build=20260815b"></script>
+    <script src="js/info_graphic.js?build=20260815d"></script>
     <script src="js/main.js?build=20260815e"></script>
 </body>
 

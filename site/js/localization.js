@@ -494,6 +494,7 @@ let genericStrings = {
     flow_state_home_active: ["Charge en cours"],
     flow_state_charging: ["Charge"],
     flow_state_discharging: ["Décharge"],
+    flow_inverter_load: ["Charge"],
     flow_state_live: ["Temps réel"],
     flow_state_delayed: ["Hors live"],
     telemetry_status_connected: ["Phocos connecté"],

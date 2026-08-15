@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815e"' in html
+    assert 'href="css/newdesign.css?build=20260815g"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -113,16 +113,25 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert 'aria-expanded="false"' in html
     assert ".dashboard-settings-panel:not(.is-expanded)" in design
     assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in design
-    assert ".power-flow-map {\n  min-height: 260px;" in design
+    assert "min-height: 260px;" in design
     assert "function toggleDashboardSettings()" in main_script
-    assert "INFO_GRAPHIC_ARROW_COUNT = 7" in flow_script
+    assert "INFO_GRAPHIC_ARROW_COUNT = 10" in flow_script
     assert 'motion.setAttribute("rotate", "auto")' in flow_script
     assert 'stroke-dasharray: none !important;' in design
     assert '.power-flow-arrow-stream.is-active' in design
+    assert 'id="flow_track_solar_hub"' in html
+    assert 'viewBox="0 0 860 360"' not in html
+    assert "function layoutInfoGraphicPaths" in flow_script
+    assert "new ResizeObserver(queueInfoGraphicLabelLayout)" in flow_script
+    assert "display: grid;" in design
+    assert "grid-column: 3;" in design
 
 
-def test_dashboard_flow_displays_inverter_power_without_redundant_subtitle():
+def test_dashboard_flow_displays_inverter_load_without_redundant_subtitle():
     html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    design = (ROOT / "site" / "css" / "newdesign.css").read_text(
+        encoding="utf-8"
+    )
     localization = (ROOT / "site" / "js" / "localization.js").read_text(
         encoding="utf-8"
     )
@@ -137,9 +146,11 @@ def test_dashboard_flow_displays_inverter_power_without_redundant_subtitle():
     assert 'id="dashboard_subtitle_time"' not in html
     assert '["dashboard_subtitle",' not in localization
     assert 'getElementById("dashboard_subtitle_time")' not in main_script
-    assert 'getMetricValueOrNull(payload, "total_output_active_power_w")' in flow_script
-    assert 'formatInfoGraphicPower(inverterPower)' in flow_script
-    assert 'localizeCompactOperationMode(payload?.device?.operation_mode)' in flow_script
+    assert 'getMetricValueOrNull(payload, "ac_output_load_percent")' in flow_script
+    assert 'formatInfoGraphicPercent(inverterLoad)' in flow_script
+    assert 'formatInfoGraphicInverterMeta(payload?.device?.operation_mode)' in flow_script
+    assert 'class="power-flow-node-progress"' in html
+    assert 'max-width: 65rem;' in design
     assert 'getInfoGraphicString("flow_state_live"' not in flow_script
 
 
