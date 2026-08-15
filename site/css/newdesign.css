@@ -607,6 +607,7 @@ body {
   text-align: left;
   top: auto;
   transform: none;
+  min-width: 0;
   width: auto;
 }
 
@@ -656,11 +657,19 @@ body {
   height: 5.5rem;
   left: 50%;
   top: 50%;
-  width: 8.8rem;
+  width: 9.8rem;
 }
 
 .power-flow-node-hub .power-flow-node-icon {
   font-size: 2.2rem;
+}
+
+.power-flow-node-hub .power-flow-node-value,
+.power-flow-node-hub .power-flow-node-meta {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .power-flow-battery-glyph {

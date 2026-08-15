@@ -687,14 +687,8 @@ a {
   right: 22%;
 }
 
-.app-data-table td.app-skeleton-text,
-#dashboard_subtitle_time.app-skeleton-text {
+.app-data-table td.app-skeleton-text {
   position: relative;
-}
-
-#dashboard_subtitle_time.app-skeleton-text {
-  display: inline-block;
-  min-width: 8.5rem;
 }
 
 .app-data-table td.app-skeleton-text::after {
@@ -705,11 +699,6 @@ a {
 .app-data-table td.text-end.app-skeleton-text::after {
   left: 36%;
   right: 0;
-}
-
-#dashboard_subtitle_time.app-skeleton-text::after {
-  left: 0;
-  right: 54%;
 }
 
 .app-skeleton-line,

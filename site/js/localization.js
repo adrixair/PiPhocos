@@ -35,7 +35,6 @@ let translations = [
     ["statistics_text_runtime", "Durée totale de fonctionnement"],
 
     // Tableau de bord
-    ["dashboard_subtitle", "Dernière mise à jour : "],
     ["dash_card_current", "Réseau et maison"],
     ["dash_card_battery", "Batterie"],
     ["dash_card_today", "Solaire et charge"],

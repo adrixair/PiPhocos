@@ -255,6 +255,13 @@ function localizeOperationMode(value) {
     return String(value);
 }
 
+function localizeCompactOperationMode(value) {
+    const compactMode = localizeOperationMode(value).replace(/^Mode\s+/i, "");
+    if (compactMode === INFO_GRAPHIC_PLACEHOLDER)
+        return compactMode;
+    return compactMode.charAt(0).toLocaleUpperCase("fr-FR") + compactMode.slice(1);
+}
+
 function renderInfoGraphicFromOverview(payload) {
     const root = getInfoGraphicRoot();
     if (root == null)
@@ -262,6 +269,8 @@ function renderInfoGraphicFromOverview(payload) {
 
     const solarPower = Math.max(0, getMetricValue(payload, "pv_power_w"));
     const housePower = Math.max(0, getMetricValue(payload, "ac_output_active_power_w"));
+    const totalOutputPower = getMetricValueOrNull(payload, "total_output_active_power_w");
+    const inverterPower = Math.max(0, totalOutputPower ?? housePower);
     const batteryChargePower = Math.max(0, getMetricValue(payload, "battery_charge_power_w"));
     const batteryDischargePower = Math.max(0, getMetricValue(payload, "battery_discharge_power_w"));
     const batterySoc = getMetricValueOrNull(payload, "battery_state_of_charge_percent");
@@ -343,10 +352,8 @@ function renderInfoGraphicFromOverview(payload) {
     setInfoGraphicNode("grid", gridValue, gridMeta, gridActive);
     setInfoGraphicNode(
         "hub",
-        localizeOperationMode(payload?.device?.operation_mode),
-        payload?.current_data_stale === true
-            ? getInfoGraphicString("flow_state_delayed", "Delayed")
-            : getInfoGraphicString("flow_state_live", "Live"),
+        formatInfoGraphicPower(inverterPower),
+        localizeCompactOperationMode(payload?.device?.operation_mode),
         true
     );
     setInfoGraphicNode(

@@ -457,7 +457,6 @@ function getDashboardRenderSignature(stats) {
     return [
         normalizeRecordedAtKey(stats?.["recorded_at"]),
         stats?.["current_data_stale"] === true ? "stale" : "fresh",
-        stats?.["pricing"]?.["price_display"] || stats?.["pricing"]?.["tempo_display"] || "",
     ].join("|");
 }
 
@@ -890,9 +889,6 @@ function buildDashboardSkeletonTable(rowCount) {
 }
 
 function setDashboardInitialLoadingState(loading) {
-    const subtitle = document.getElementById("dashboard_subtitle_time");
-    if (subtitle != null)
-        subtitle.classList.toggle("app-skeleton-text", loading === true);
     if (loading) {
         setViewBusyState("view_dashboard", true);
         Object.entries(DASHBOARD_SKELETON_TABLE_ROWS).forEach(([containerId, rowCount]) => {
@@ -1116,7 +1112,6 @@ function updateCurrentStats() {
             gLastDashboardRenderSignature = null;
             gDashboardHasLoadedOnce = true;
             setDashboardInitialLoadingState(false);
-            document.getElementById("dashboard_subtitle_time").innerHTML = getGenericString("unavailable");
             DASHBOARD_TABLE_IDS.forEach(id => {
                 const container = document.getElementById(id);
                 if (container != null)
@@ -1133,15 +1128,6 @@ function updateCurrentStats() {
         gLastDashboardRenderSignature = renderSignature;
         gDashboardHasLoadedOnce = true;
         setDashboardInitialLoadingState(false);
-
-        const recordedAt = stats["recorded_at"] ? new Date(stats["recorded_at"]) : new Date();
-        let subtitleText = recordedAt.toLocaleTimeString(getLocale(), { timeZone: "Europe/Paris" });
-        const priceDisplay = stats["pricing"]?.["price_display"] || stats["pricing"]?.["tempo_display"];
-        if (priceDisplay)
-            subtitleText += " | Tarif: " + priceDisplay;
-        if (stats["current_data_stale"] === true)
-            subtitleText += " | " + getGenericString("dashboard_stale_note");
-        document.getElementById("dashboard_subtitle_time").textContent = subtitleText;
 
         renderDashboardTable("dash_current_table", dashboardTableConfigs.current, stats);
         renderDashboardTable("dash_battery_table", dashboardTableConfigs.battery, stats);
@@ -1160,7 +1146,6 @@ function updateCurrentStats() {
         gDashboardHasLoadedOnce = true;
         setDashboardInitialLoadingState(false);
         renderTelemetryStatus();
-        document.getElementById("dashboard_subtitle_time").innerHTML = getGenericString("unavailable");
         DASHBOARD_TABLE_IDS.forEach(id => {
             const container = document.getElementById(id);
             if (container != null)
