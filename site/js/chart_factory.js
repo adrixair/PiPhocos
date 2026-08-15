@@ -244,6 +244,21 @@ const STACKED_BAR_STYLE = Object.freeze({
 });
 const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;
 
+function buildCartesianChartInteraction() {
+    return {
+        mode: "index",
+        intersect: false,
+        axis: "x",
+    };
+}
+
+function buildRadialChartInteraction() {
+    return {
+        mode: "nearest",
+        intersect: true,
+    };
+}
+
 function centerHistoryDetailsBars(chartData) {
     let slotCount = Math.max(
         HISTORY_DETAILS_MIN_BAR_SLOTS,
@@ -293,6 +308,10 @@ function configureChartDefaults() {
         tooltip.padding = 10;
         tooltip.displayColors = true;
         tooltip.boxPadding = 4;
+        tooltip.animation = false;
+        tooltip.caretPadding = 8;
+        tooltip.titleSpacing = 4;
+        tooltip.bodySpacing = 4;
     }
 }
 
@@ -353,6 +372,7 @@ function createConsumptionChart(canvasId, gridPercentage, pvPercentage, batteryP
                 rotation: 180,
                 maintainAspectRatio: false,
                 resizeDelay: 0,
+                interaction: buildRadialChartInteraction(),
                 title: {
                     display: false
                 },
@@ -428,6 +448,7 @@ function createUsageChart(canvasId, housePercentage, batteryPercentage, fedInPer
                 rotation: 180,
                 maintainAspectRatio: false,
                 resizeDelay: 0,
+                interaction: buildRadialChartInteraction(),
                 title: {
                     display: false
                 },
@@ -678,10 +699,7 @@ function createDashboardChart(canvasId, data) {
                         radius: 0
                     }
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: buildCartesianChartInteraction(),
                 scales: {
                     x: xScaleOptions,
                     y: {
@@ -834,10 +852,7 @@ function createHighResChart(canvasId, data) {
                         radius: 0
                     }
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: buildCartesianChartInteraction(),
                 scales: {
                     x: xScaleOptions,
                     y: {
@@ -998,10 +1013,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
                     enabled: true,
                     mode: 'label'
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: buildCartesianChartInteraction(),
                 locale: getLocale(),
                 scales: {
                     x: {
@@ -1129,10 +1141,7 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
                         }
                     },
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
+                interaction: buildCartesianChartInteraction(),
                 locale: getLocale(),
                 scales: {
                     x: {

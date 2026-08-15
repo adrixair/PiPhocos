@@ -461,14 +461,19 @@ body {
   border-radius: 50%;
   color: #727b85;
   height: 1.55rem;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
   width: 1.55rem;
 }
 
-.dashboard-info-badge:hover,
 .dashboard-info-badge:focus-visible,
 .dashboard-info-badge.is-active {
   background: #fff3eb;
   border-color: var(--app-border-accent);
+}
+
+.dashboard-info-badge:focus-visible {
+  box-shadow: var(--app-focus-ring);
+  outline: none;
 }
 
 .app-skeleton-text::after,
@@ -517,6 +522,7 @@ body {
   padding: 0.5rem 0.65rem;
   text-align: left;
   touch-action: manipulation;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease, opacity 150ms ease;
   white-space: nowrap;
 }
 
@@ -543,6 +549,85 @@ body {
 .dashboard-chart-series-button:not(.is-active) .dashboard-chart-series-dot,
 .chart-series-control-button:not(.is-active) .dashboard-chart-series-dot {
   background: #ffffff;
+}
+
+.dashboard-chart-series-button:focus-visible,
+.chart-series-control-button:focus-visible {
+  border-color: var(--dashboard-series-color);
+  box-shadow: var(--app-focus-ring);
+  opacity: 1;
+  outline: none;
+}
+
+.dashboard-chart-series-button:active,
+.chart-series-control-button:active,
+.dashboard-info-badge:active {
+  background: var(--app-control-fill-active);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dashboard-chart-series-button:hover,
+  .chart-series-control-button:hover {
+    background: var(--app-control-fill-hover);
+    border-color: var(--dashboard-series-color);
+    color: var(--app-text);
+    opacity: 1;
+  }
+
+  .dashboard-info-badge:hover {
+    background: var(--app-control-fill-hover);
+    border-color: var(--app-control-border-hover);
+    color: var(--app-text);
+  }
+
+  .dashboard-info-badge.is-active:hover {
+    background: var(--app-control-fill-selected-hover);
+    border-color: var(--app-control-border-selected);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .app-icon-button:hover,
+  .app-control-button:hover {
+    background: var(--app-control-fill);
+    border-color: var(--app-control-border);
+  }
+
+  .dashboard-info-badge:hover:not(.is-active) {
+    background: var(--app-control-fill);
+    border-color: var(--app-control-border);
+    color: #727b85;
+  }
+
+  .dashboard-chart-series-button:hover,
+  .chart-series-control-button:hover {
+    background: var(--app-control-fill);
+  }
+
+  .app-nav-link:hover:not(.is-active):not([aria-current="page"]) {
+    background: transparent;
+    border-color: transparent;
+    color: var(--app-text-soft) !important;
+  }
+
+  .app-select:hover {
+    background: var(--app-control-fill);
+    border-color: var(--app-control-border);
+  }
+
+  .app-segmented-button:hover:not(.is-active):not([aria-pressed="true"]),
+  .app-toggle-label:hover {
+    background: transparent;
+    border-color: transparent;
+    color: var(--app-text-soft);
+  }
+
+  .app-segmented-button.is-active:hover,
+  .app-segmented-button[aria-pressed="true"]:hover,
+  .btn-check:checked + .app-toggle-label:hover {
+    background: var(--app-control-fill-selected);
+    border-color: var(--app-control-border-selected);
+  }
 }
 
 .dashboard-chart-series-solar {
@@ -719,6 +804,10 @@ body {
 
 .power-flow-arrow-stream.is-active {
   opacity: 1;
+}
+
+.power-flow-arrow-motion {
+  pointer-events: none;
 }
 
 .power-flow-arrow {
@@ -1281,12 +1370,18 @@ body {
   }
 
   .power-flow-node-core {
-    height: 1.65rem;
-    width: 1.65rem;
+    flex: 0 0 1.85rem;
+    height: 1.85rem;
+    line-height: 1;
+    width: 1.85rem;
   }
 
   .power-flow-node-icon {
-    font-size: 1.45rem;
+    align-items: center;
+    display: flex;
+    font-size: 1.5rem;
+    justify-content: center;
+    line-height: 1;
   }
 
   .power-flow-node-copy,
@@ -1329,15 +1424,18 @@ body {
 
   .power-flow-battery-glyph {
     border-width: 0.14rem;
-    height: 0.82rem;
-    width: 1.5rem;
+    flex: 0 0 auto;
+    height: 0.96rem;
+    width: 1.72rem;
   }
 
-  .power-flow-arrow {
-    transform: scale(0.8);
+  .power-flow-battery-glyph::after {
+    height: 0.46rem;
+    right: -0.27rem;
+    width: 0.16rem;
   }
 
-  .power-flow-arrow:nth-child(even) {
+  .power-flow-arrow-motion:nth-child(even) {
     display: none;
   }
 
@@ -1430,11 +1528,11 @@ body {
     width: var(--flow-hub-node-width);
   }
 
-  .power-flow-arrow {
+  .power-flow-arrow-motion:nth-child(odd) {
     display: none;
   }
 
-  .power-flow-arrow:nth-child(3n + 1) {
+  .power-flow-arrow-motion:nth-child(4n + 1) {
     display: block;
   }
 

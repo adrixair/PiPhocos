@@ -63,9 +63,12 @@ function ensureInfoGraphicArrowStreams() {
         );
 
         for (let index = 0; index < INFO_GRAPHIC_ARROW_COUNT; index++) {
+            const motionGroup = document.createElementNS(svgNamespace, "g");
+            motionGroup.setAttribute("class", "power-flow-arrow-motion");
+
             const arrow = document.createElementNS(svgNamespace, "path");
             arrow.setAttribute("class", "power-flow-arrow");
-            arrow.setAttribute("d", "M -5 -3.5 L 1 0 L -5 3.5");
+            arrow.setAttribute("d", "M -4.5 -3 L 0.75 0 L -4.5 3");
             arrow.setAttribute("vector-effect", "non-scaling-stroke");
 
             const motion = document.createElementNS(svgNamespace, "animateMotion");
@@ -83,8 +86,8 @@ function ensureInfoGraphicArrowStreams() {
             motionPath.setAttribute("href", linkReference);
             motionPath.setAttributeNS(xlinkNamespace, "xlink:href", linkReference);
             motion.appendChild(motionPath);
-            arrow.appendChild(motion);
-            stream.appendChild(arrow);
+            motionGroup.append(arrow, motion);
+            stream.appendChild(motionGroup);
         }
 
         svg.appendChild(stream);
