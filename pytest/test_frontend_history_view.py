@@ -263,7 +263,7 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;" in main_script
     assert "const shouldShowRefresh" not in main_script
     assert "hidden: true" not in chart_script
-    assert 'src="js/chart_factory.js?build=20260816a"' in html
+    assert 'src="js/chart_factory.js?build=20260816b"' in html
     assert "legendLabels.usePointStyle = true;" in chart_script
     assert html.count('data-dashboard-series=') == 4
     assert "function toggleDashboardChartSeries(datasetIndex)" in chart_script
@@ -288,7 +288,11 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "white-space: nowrap;" in design
     assert ".dashboard-settings-panel .app-panel-head-between" in design
     assert "flex: 0 0 2.75rem;" in design
-    assert "...STACKED_BAR_STYLE" in chart_script
+    assert "function buildStackedBarStyle(color)" in chart_script
+    assert "hoverBackgroundColor: color" in chart_script
+    assert "hoverBorderWidth: 0" in chart_script
+    assert chart_script.count("...buildStackedBarStyle(") == 6
+    assert chart_script.count("hoverBackgroundColor: barColors") == 2
     assert "borderRadius: 0," in chart_script
     assert "const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;" in chart_script
     assert "function centerHistoryDetailsBars" in chart_script

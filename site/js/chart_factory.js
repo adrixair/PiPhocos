@@ -244,6 +244,18 @@ const STACKED_BAR_STYLE = Object.freeze({
 });
 const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;
 
+function buildStackedBarStyle(color) {
+    return {
+        ...STACKED_BAR_STYLE,
+        backgroundColor: color,
+        borderColor: color,
+        borderWidth: 0,
+        hoverBackgroundColor: color,
+        hoverBorderColor: color,
+        hoverBorderWidth: 0,
+    };
+}
+
 function buildCartesianChartInteraction() {
     return {
         mode: "index",
@@ -356,6 +368,8 @@ function createConsumptionChart(canvasId, gridPercentage, pvPercentage, batteryP
             backgroundColor: barColors,
             borderColor: "#ffffff",
             borderWidth: 2,
+            hoverBackgroundColor: barColors,
+            hoverBorderColor: "#ffffff",
             hoverBorderWidth: 2,
             hoverOffset: 4,
             spacing: 1,
@@ -427,6 +441,8 @@ function createUsageChart(canvasId, housePercentage, batteryPercentage, fedInPer
             backgroundColor: barColors,
             borderColor: "#ffffff",
             borderWidth: 2,
+            hoverBackgroundColor: barColors,
+            hoverBorderColor: "#ffffff",
             hoverBorderWidth: 2,
             hoverOffset: 4,
             spacing: 1,
@@ -937,19 +953,13 @@ function createHistoryDetailsChartProduction(canvasId, data) {
         datasets: [{
             label: getChartString("chart_produced_self_kwh"),
             data: [],
-            ...STACKED_BAR_STYLE,
-            borderColor: COLOR_PRODUCTION_SELF_CONSUMED,
-            backgroundColor: COLOR_PRODUCTION_SELF_CONSUMED,
-            borderWidth: 0,
+            ...buildStackedBarStyle(COLOR_PRODUCTION_SELF_CONSUMED),
             stack: 'Stack 0'
         },
         {
             label: getChartString("chart_produced_battery_kwh"),
             data: [],
-            ...STACKED_BAR_STYLE,
-            borderColor: COLOR_PRODUCTION_TO_BATTERY,
-            backgroundColor: COLOR_PRODUCTION_TO_BATTERY,
-            borderWidth: 0,
+            ...buildStackedBarStyle(COLOR_PRODUCTION_TO_BATTERY),
             stack: 'Stack 0'
         }]
     };
@@ -957,10 +967,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
         chart_data.datasets.push({
             label: getChartString("chart_produced_grid_kwh"),
             data: [],
-            ...STACKED_BAR_STYLE,
-            borderColor: COLOR_PRODUCTION_FED_IN,
-            backgroundColor: COLOR_PRODUCTION_FED_IN,
-            borderWidth: 0,
+            ...buildStackedBarStyle(COLOR_PRODUCTION_FED_IN),
             stack: 'Stack 0'
         });
     }
@@ -1072,28 +1079,19 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
         datasets: [{
             label: getChartString("chart_consumed_pv_kwh"),
             data: [],
-            ...STACKED_BAR_STYLE,
-            borderColor: COLOR_CONSUMED_FROM_PV,
-            backgroundColor: COLOR_CONSUMED_FROM_PV,
-            borderWidth: 0,
+            ...buildStackedBarStyle(COLOR_CONSUMED_FROM_PV),
             stack: 'Stack 0'
         },
         {
             label: getChartString("chart_consumed_battery_kwh"),
             data: [],
-            ...STACKED_BAR_STYLE,
-            borderColor: COLOR_CONSUMED_FROM_BATTERY,
-            backgroundColor: COLOR_CONSUMED_FROM_BATTERY,
-            borderWidth: 0,
+            ...buildStackedBarStyle(COLOR_CONSUMED_FROM_BATTERY),
             stack: 'Stack 0'
         },
         {
             label: getChartString("chart_consumed_grid_kwh"),
             data: [],
-            ...STACKED_BAR_STYLE,
-            borderColor: COLOR_CONSUMED_FROM_GRID,
-            backgroundColor: COLOR_CONSUMED_FROM_GRID,
-            borderWidth: 0,
+            ...buildStackedBarStyle(COLOR_CONSUMED_FROM_GRID),
             stack: 'Stack 0'
         }]
     };
