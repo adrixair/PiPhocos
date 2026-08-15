@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815u"' in html
+    assert 'href="css/newdesign.css?build=20260815v"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -135,6 +135,29 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert 'id="dashboard_power_flow" aria-busy="true"' in html
     assert ".power-flow-map.is-loading .power-flow-node-value" in design
     assert "function setPowerFlowLoadingState(loading)" in main_script
+
+
+def test_dashboard_mobile_values_stay_on_one_line_and_truncate_cleanly():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    custom = (ROOT / "site" / "css" / "custom.css").read_text(encoding="utf-8")
+    design = (ROOT / "site" / "css" / "newdesign.css").read_text(
+        encoding="utf-8"
+    )
+    main_script = (ROOT / "site" / "js" / "main.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'src="js/main.js?build=20260815o"' in html
+    assert 'href="css/custom.css?build=20260815c"' in html
+    assert 'class="dashboard-value-text"' in main_script
+    assert ".dashboard-value-text" in custom
+    assert "text-overflow: ellipsis;" in custom
+    assert "white-space: nowrap;" in custom
+    assert "grid-template-columns: 1.8rem minmax(0, 1fr) minmax(4.5rem, max-content) max-content;" in design
+    assert "grid-template-columns: 1.65rem minmax(0, 1fr) minmax(4.25rem, max-content) max-content;" in design
+    assert "max-width: min(10rem, 42vw);" in design
+    assert ".dashboard-metrics .app-inline-label-text" in design
+    assert ".dashboard-metrics .dashboard-info-badge" in design
 
 
 def test_dashboard_flow_displays_consistent_short_states():

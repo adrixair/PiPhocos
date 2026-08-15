@@ -1025,7 +1025,7 @@ function renderDashboardTable(containerId, config, payload) {
             + buildInfoBadge(row.tooltip)
             + '</span>'
             + '</td>'
-            + '<td class="text-end dashboard-value-cell">' + escapeHtml(row.value) + '</td>'
+            + '<td class="text-end dashboard-value-cell"><span class="dashboard-value-text">' + escapeHtml(row.value) + '</span></td>'
             + '<td class="text-end dashboard-unit-cell text-secondary">' + escapeHtml(row.unit) + '</td>'
             + '</tr>'
         )).join("")

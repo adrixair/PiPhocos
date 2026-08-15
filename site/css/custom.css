@@ -1276,8 +1276,15 @@ a {
 .dashboard-value-cell {
   max-width: 12rem;
   min-width: 4.5rem;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  overflow: hidden;
+}
+
+.dashboard-value-text {
+  display: block;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-unit-cell {

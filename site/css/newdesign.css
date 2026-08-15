@@ -1490,6 +1490,62 @@ body {
     padding-top: 0.62rem;
   }
 
+  .dashboard-metrics,
+  .dashboard-metrics tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .dashboard-metrics tr {
+    align-items: center;
+    display: grid;
+    grid-template-columns: 1.8rem minmax(0, 1fr) minmax(4.5rem, max-content) max-content;
+    width: 100%;
+  }
+
+  .dashboard-metrics td {
+    display: block;
+    min-width: 0;
+  }
+
+  .dashboard-metrics .dashboard-icon-cell {
+    width: auto;
+  }
+
+  .dashboard-metrics .dashboard-label-cell {
+    width: auto;
+  }
+
+  .dashboard-metrics .app-inline-label {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+
+  .dashboard-metrics .app-inline-label-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-metrics .dashboard-info-badge {
+    flex: 0 0 1.75rem;
+  }
+
+  .dashboard-metrics .dashboard-value-cell {
+    max-width: min(10rem, 42vw);
+    min-width: 0;
+  }
+
+  .dashboard-metrics .dashboard-value-text {
+    max-width: 100%;
+  }
+
+  .dashboard-metrics .dashboard-unit-cell {
+    padding-left: 0.35rem;
+  }
+
   .history-summary-grid > .app-panel > .app-panel-body > .app-data-table:first-child td:nth-child(3) {
     font-size: 1.08rem;
   }
@@ -1544,6 +1600,10 @@ body {
 
   .history-mode-year .history-toolbar-controls {
     grid-template-columns: 2.35rem minmax(0, 1fr) 2.35rem;
+  }
+
+  .dashboard-metrics tr {
+    grid-template-columns: 1.65rem minmax(0, 1fr) minmax(4.25rem, max-content) max-content;
   }
 }
 
