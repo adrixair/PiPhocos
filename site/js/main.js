@@ -554,6 +554,28 @@ function refreshTelemetryStatus() {
 
 function configureDashboardLayout() {
     updateDashboardTimeSpanButtons();
+    setDashboardSettingsExpanded(false);
+}
+
+function setDashboardSettingsExpanded(expanded) {
+    const panel = document.querySelector(".dashboard-settings-panel");
+    const toggle = document.getElementById("dashboard_settings_toggle");
+    if (panel == null || toggle == null)
+        return;
+
+    const isExpanded = expanded === true;
+    panel.classList.toggle("is-expanded", isExpanded);
+    toggle.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    toggle.title = isExpanded
+        ? "Masquer les paramètres Phocos"
+        : "Afficher les paramètres Phocos";
+    if (isExpanded)
+        queueVisibleChartResize();
+}
+
+function toggleDashboardSettings() {
+    const panel = document.querySelector(".dashboard-settings-panel");
+    setDashboardSettingsExpanded(!panel?.classList.contains("is-expanded"));
 }
 
 function escapeHtml(text) {

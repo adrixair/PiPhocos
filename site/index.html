@@ -21,7 +21,7 @@
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
     <link href="css/custom.css?build=20260708a" rel="stylesheet" />
-    <link href="css/newdesign.css?build=20260815c" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20260815d" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -278,10 +278,16 @@
                         </section>
 
                         <section class="app-panel metric-panel dashboard-settings-panel">
-                            <div class="app-panel-head">
+                            <div class="app-panel-head app-panel-head-between">
                                 <span class="app-panel-title" id="dash_card_phocos_settings">Paramètres Phocos</span>
+                                <button class="app-icon-button app-panel-toggle" id="dashboard_settings_toggle"
+                                    type="button" aria-expanded="false" aria-controls="dashboard_settings_body"
+                                    title="Afficher les paramètres Phocos" onclick="toggleDashboardSettings();">
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Afficher ou masquer les paramètres Phocos</span>
+                                </button>
                             </div>
-                            <div class="app-panel-body">
+                            <div class="app-panel-body" id="dashboard_settings_body">
                                 <div id="dash_phocos_parameters_table"></div>
                             </div>
                         </section>
@@ -736,7 +742,7 @@
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
     <script src="js/chart_factory.js?build=20260407h"></script>
     <script src="js/info_graphic.js?build=20260815a"></script>
-    <script src="js/main.js?build=20260815c"></script>
+    <script src="js/main.js?build=20260815d"></script>
 </body>
 
 </html>
