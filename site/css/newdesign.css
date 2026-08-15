@@ -41,6 +41,8 @@
   --app-control-shadow-open: none;
   --app-control-shadow-selected: none;
   --app-focus-ring: 0 0 0 3px rgba(243, 106, 16, 0.16);
+  --app-skeleton-base: #e9edf1;
+  --app-skeleton-highlight: #f8fafb;
   --app-success: #14994f;
   --app-danger: #d9483b;
   --app-danger-soft: #fff1f0;
@@ -101,6 +103,16 @@ body {
 .app-control-button:hover {
   background: var(--app-control-fill-hover);
   border-color: var(--app-control-border-hover);
+}
+
+.app-icon-button:focus-visible,
+.app-control-button:focus-visible,
+.app-segmented-button:focus-visible,
+.app-toggle-label:focus-visible,
+.app-select:focus-visible,
+.app-nav-link:focus-visible {
+  box-shadow: var(--app-focus-ring);
+  outline: none;
 }
 
 .app-header-status {
@@ -276,7 +288,9 @@ body {
 }
 
 .app-panel-head {
+  background: #fcfcfd;
   border-bottom-color: var(--app-border);
+  border-radius: 7px 7px 0 0;
   min-height: 3.35rem;
   padding: 0.85rem var(--app-panel-padding);
 }
@@ -337,6 +351,10 @@ body {
   min-height: 7.5rem;
   padding: 1.15rem;
   text-align: left !important;
+}
+
+.stat-hero-panel {
+  border-top-color: rgba(243, 106, 16, 0.42);
 }
 
 .stat-hero-value {
@@ -457,10 +475,24 @@ body {
   border-color: var(--app-border-accent);
 }
 
-.chart-shell,
-.chart-shell.is-loading {
+.app-skeleton-text::after,
+.app-skeleton-line,
+.app-skeleton-dot {
+  background: linear-gradient(100deg,
+      var(--app-skeleton-base) 0%,
+      var(--app-skeleton-highlight) 46%,
+      var(--app-skeleton-base) 100%);
+  background-size: 200% 100%;
+}
+
+.chart-shell {
   background: #ffffff;
   border-radius: 6px;
+  isolation: isolate;
+}
+
+.chart-shell canvas {
+  transition: opacity 160ms ease;
 }
 
 .chart-shell-dashboard {
@@ -480,9 +512,80 @@ body {
   margin: 0.35rem 0 0.65rem;
 }
 
+.chart-shell.is-loading {
+  background:
+    repeating-linear-gradient(180deg,
+      transparent 0,
+      transparent 3.4rem,
+      rgba(90, 97, 105, 0.08) 3.4rem,
+      rgba(90, 97, 105, 0.08) calc(3.4rem + 1px)),
+    #ffffff;
+}
+
 .chart-shell.is-loading::before {
-  background: #f3f5f7;
+  background: linear-gradient(180deg, rgba(243, 106, 16, 0.16) 0%, rgba(243, 106, 16, 0.025) 100%);
+  bottom: 11%;
+  clip-path: polygon(0 84%, 10% 70%, 23% 76%, 35% 48%, 48% 59%, 61% 31%, 73% 41%, 86% 18%, 100% 27%, 100% 100%, 0 100%);
+  left: 5%;
   opacity: 1;
+  right: 5%;
+  top: 14%;
+}
+
+.chart-shell.is-loading::after {
+  background: linear-gradient(110deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.82) 44%,
+      rgba(255, 255, 255, 0) 72%);
+}
+
+.chart-shell-donut.is-loading {
+  background: #ffffff;
+}
+
+.chart-shell-donut.is-loading::before {
+  background: transparent;
+  border: 1.15rem solid var(--app-skeleton-base);
+  border-right-color: rgba(243, 106, 16, 0.28);
+  border-top-color: rgba(243, 106, 16, 0.28);
+  border-radius: 50%;
+  bottom: auto;
+  clip-path: none;
+  height: 9.25rem;
+  left: 50%;
+  right: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 9.25rem;
+}
+
+.chart-shell.is-refreshing::after {
+  animation: app-chart-refresh 900ms ease-in-out infinite;
+  background: var(--app-accent);
+  border-radius: 999px;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 32%;
+  z-index: 3;
+}
+
+@keyframes app-chart-refresh {
+  0% {
+    opacity: 0;
+    transform: translateX(-110%);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(420%);
+  }
 }
 
 .power-flow-panel .app-panel-body {
@@ -756,6 +859,55 @@ body {
 
 .power-flow-map.is-disabled .power-flow-arrow-stream {
   opacity: 0 !important;
+}
+
+.power-flow-map.is-loading .power-flow-arrow-stream {
+  opacity: 0 !important;
+}
+
+.power-flow-map.is-loading .power-flow-track,
+.power-flow-map.is-loading .power-flow-link {
+  opacity: 0.45;
+  stroke: var(--app-skeleton-base);
+}
+
+.power-flow-map.is-loading .power-flow-node-core {
+  color: #cfd5dc;
+  opacity: 0.7;
+}
+
+.power-flow-map.is-loading .power-flow-node-value,
+.power-flow-map.is-loading .power-flow-node-meta,
+.power-flow-map.is-loading .power-flow-node-progress {
+  animation: app-skeleton-shimmer 1.45s linear infinite;
+  background: linear-gradient(100deg,
+      var(--app-skeleton-base) 0%,
+      var(--app-skeleton-highlight) 46%,
+      var(--app-skeleton-base) 100%);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  color: transparent !important;
+}
+
+.power-flow-map.is-loading .power-flow-node-value {
+  height: 1rem;
+  max-width: 4.2rem;
+  width: 72%;
+}
+
+.power-flow-map.is-loading .power-flow-node-meta {
+  display: block;
+  height: 0.62rem;
+  max-width: 5.5rem;
+  width: 88%;
+}
+
+.power-flow-map.is-loading .power-flow-node-progress {
+  height: 0.22rem;
+}
+
+.power-flow-map.is-loading .power-flow-node-progress-value {
+  display: none;
 }
 
 .history-toolbar .app-panel-body {
@@ -1185,5 +1337,16 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .power-flow-arrow-stream {
     display: none;
+  }
+
+  .app-skeleton-text::after,
+  .app-skeleton-line,
+  .app-skeleton-dot,
+  .power-flow-map.is-loading .power-flow-node-value,
+  .power-flow-map.is-loading .power-flow-node-meta,
+  .power-flow-map.is-loading .power-flow-node-progress,
+  .chart-shell.is-loading::after,
+  .chart-shell.is-refreshing::after {
+    animation: none;
   }
 }

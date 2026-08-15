@@ -21,7 +21,7 @@
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
     <link href="css/custom.css?build=20260815b" rel="stylesheet" />
-    <link href="css/newdesign.css?build=20260815h" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20260815i" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -98,7 +98,7 @@
                             <span class="app-panel-title" id="dash_card_live_flow">Flux en direct</span>
                         </div>
                         <div class="app-panel-body">
-                            <div class="power-flow-map" id="dashboard_power_flow">
+                            <div class="power-flow-map is-loading" id="dashboard_power_flow" aria-busy="true">
                                 <svg class="power-flow-svg" aria-hidden="true">
                                     <path id="flow_track_solar_hub" class="power-flow-track" />
                                     <path id="flow_track_grid_hub" class="power-flow-track" />
@@ -220,8 +220,10 @@
                             </div>
                         </div>
                         <div class="app-panel-body">
-                            <div class="chart-shell chart-shell-dashboard" id="dashboard_chart_shell">
-                                <canvas id="chart_dashboard"></canvas>
+                            <div class="chart-shell chart-shell-dashboard is-loading" id="dashboard_chart_shell"
+                                aria-busy="true">
+                                <canvas id="chart_dashboard" role="img"
+                                    aria-label="Évolution récente de la production et de la consommation"></canvas>
                             </div>
                         </div>
                     </section>
@@ -446,7 +448,8 @@
                                         </tbody>
                                     </table>
                                     <div class="chart-shell chart-shell-donut" id="history_chart_usage_shell">
-                                        <canvas id="chart_usage"></canvas>
+                                        <canvas id="chart_usage" role="img"
+                                            aria-label="Répartition de l'énergie produite"></canvas>
                                     </div>
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
@@ -489,7 +492,8 @@
                                         </tbody>
                                     </table>
                                     <div class="chart-shell chart-shell-donut" id="history_chart_consumption_shell">
-                                        <canvas id="chart_consumption"></canvas>
+                                        <canvas id="chart_consumption" role="img"
+                                            aria-label="Répartition de la consommation électrique"></canvas>
                                     </div>
                                     <table class="table table-borderless app-data-table">
                                         <tbody>
@@ -581,7 +585,8 @@
                                     </div>
                                     <div class="app-panel-body">
                                         <div class="chart-shell chart-shell-medium" id="history_chart_details_production_shell">
-                                            <canvas id="chart_history_details_production"></canvas>
+                                            <canvas id="chart_history_details_production" role="img"
+                                                aria-label="Détail de la production sur la période"></canvas>
                                         </div>
                                     </div>
                                 </section>
@@ -592,7 +597,8 @@
                                     </div>
                                     <div class="app-panel-body">
                                         <div class="chart-shell chart-shell-medium" id="history_chart_details_consumption_shell">
-                                            <canvas id="chart_history_details_consumption"></canvas>
+                                            <canvas id="chart_history_details_consumption" role="img"
+                                                aria-label="Détail de la consommation sur la période"></canvas>
                                         </div>
                                     </div>
                                 </section>
@@ -607,7 +613,8 @@
                             </div>
                             <div class="app-panel-body">
                                 <div class="chart-shell chart-shell-history" id="history_chart_high_res_shell">
-                                    <canvas id="chart_history_high_res"></canvas>
+                                    <canvas id="chart_history_high_res" role="img"
+                                        aria-label="Courbe de puissance de la journée"></canvas>
                                 </div>
                             </div>
                         </section>
@@ -633,9 +640,9 @@
     <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
-    <script src="js/chart_factory.js?build=20260407h"></script>
+    <script src="js/chart_factory.js?build=20260815i"></script>
     <script src="js/info_graphic.js?build=20260815e"></script>
-    <script src="js/main.js?build=20260815f"></script>
+    <script src="js/main.js?build=20260815g"></script>
 </body>
 
 </html>

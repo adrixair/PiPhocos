@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815h"' in html
+    assert 'href="css/newdesign.css?build=20260815i"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -125,6 +125,10 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert "new ResizeObserver(queueInfoGraphicLabelLayout)" in flow_script
     assert "display: grid;" in design
     assert "grid-column: 3;" in design
+    assert 'class="power-flow-map is-loading"' in html
+    assert 'id="dashboard_power_flow" aria-busy="true"' in html
+    assert ".power-flow-map.is-loading .power-flow-node-value" in design
+    assert "function setPowerFlowLoadingState(loading)" in main_script
 
 
 def test_dashboard_flow_displays_inverter_load_without_redundant_subtitle():
@@ -191,6 +195,30 @@ def test_history_energy_colors_are_repeated_by_their_icons():
     assert ".energy-metric-row.is-emphasis > td:nth-child(3)" in design
     assert "#history_stat_produced {" not in design
     assert "#history_stat_consumption_total {" not in design
+
+
+def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    design = (ROOT / "site" / "css" / "newdesign.css").read_text(
+        encoding="utf-8"
+    )
+    main_script = (ROOT / "site" / "js" / "main.js").read_text(
+        encoding="utf-8"
+    )
+    chart_script = (ROOT / "site" / "js" / "chart_factory.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'id="dashboard_chart_shell"\n                                aria-busy="true"' in html
+    assert 'role="img"' in html
+    assert ".chart-shell-donut.is-loading::before" in design
+    assert ".chart-shell.is-refreshing::after" in design
+    assert "function setChartShellRefreshingState" in main_script
+    assert "const shouldShowSkeleton = !gDashboardGraphHasLoadedOnce;" in main_script
+    assert "const shouldShowRefresh = forceRefresh && gDashboardGraphHasLoadedOnce;" in main_script
+    assert "hidden: true" not in chart_script
+    assert "legendLabels.usePointStyle = true;" in chart_script
+    assert "...STACKED_BAR_STYLE" in chart_script
 
 
 def test_new_design_formats_invoice_amounts_to_cents():

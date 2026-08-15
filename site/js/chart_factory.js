@@ -128,6 +128,47 @@ const COLOR_CONSUMED_FROM_BATTERY = COLOR_FLOW_BATTERY;
 
 const COLOR_PRODUCED = COLOR_FLOW_SOLAR;
 const COLOR_CONSUMED = COLOR_FLOW_HOME;
+const COLOR_CHART_TEXT = getAppColor("--app-text-soft", "#5a6169");
+const COLOR_CHART_GRID = getAppColor("--app-border", "#e2e5e9");
+const STACKED_BAR_STYLE = Object.freeze({
+    borderRadius: 3,
+    borderSkipped: false,
+    maxBarThickness: 34,
+});
+
+function configureChartDefaults() {
+    if (typeof Chart === "undefined" || Chart.defaults == null)
+        return;
+
+    Chart.defaults.color = COLOR_CHART_TEXT;
+    Chart.defaults.borderColor = COLOR_CHART_GRID;
+    Chart.defaults.font.family = getAppColor(
+        "--app-font-sans",
+        'Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif'
+    );
+    Chart.defaults.font.size = 11;
+
+    const legendLabels = Chart.defaults.plugins?.legend?.labels;
+    if (legendLabels != null) {
+        legendLabels.usePointStyle = true;
+        legendLabels.pointStyle = "circle";
+        legendLabels.boxWidth = 7;
+        legendLabels.boxHeight = 7;
+        legendLabels.padding = 14;
+        legendLabels.color = COLOR_CHART_TEXT;
+    }
+
+    const tooltip = Chart.defaults.plugins?.tooltip;
+    if (tooltip != null) {
+        tooltip.backgroundColor = "rgba(23, 25, 28, 0.94)";
+        tooltip.cornerRadius = 6;
+        tooltip.padding = 10;
+        tooltip.displayColors = true;
+        tooltip.boxPadding = 4;
+    }
+}
+
+configureChartDefaults();
 
 
 // Utility function to beautify the given date
@@ -165,7 +206,11 @@ function createConsumptionChart(canvasId, gridPercentage, pvPercentage, batteryP
         labels: xValues,
         datasets: [{
             backgroundColor: barColors,
-            borderWidth: 0,
+            borderColor: "#ffffff",
+            borderWidth: 2,
+            hoverBorderWidth: 2,
+            hoverOffset: 4,
+            spacing: 1,
             data: yValues
         }]
     };
@@ -224,7 +269,11 @@ function createUsageChart(canvasId, housePercentage, batteryPercentage, fedInPer
         labels: xValues,
         datasets: [{
             backgroundColor: barColors,
-            borderWidth: 0,
+            borderColor: "#ffffff",
+            borderWidth: 2,
+            hoverBorderWidth: 2,
+            hoverOffset: 4,
+            spacing: 1,
             data: yValues
         }]
     };
@@ -312,6 +361,7 @@ function buildAdaptiveTimeScaleOptions(canvasWidth, config = {}) {
         offset: false,
         ticks: {
             autoSkip: false,
+            color: COLOR_CHART_TEXT,
             padding: width < 420 ? 10 : 8,
             maxRotation: rotation,
             minRotation: rotation,
@@ -328,6 +378,9 @@ function buildAdaptiveTimeScaleOptions(canvasWidth, config = {}) {
             },
         },
         grid: {
+            display: false,
+        },
+        border: {
             display: false,
         },
     };
@@ -375,6 +428,12 @@ function buildLineDataset(label, options = {}) {
         backgroundColor: options.backgroundColor,
         borderWidth: options.borderWidth ?? 2,
         borderDash: options.borderDash || [],
+        borderCapStyle: "round",
+        borderJoinStyle: "round",
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        pointHitRadius: 12,
+        spanGaps: false,
         tension: 0,
     };
 }
@@ -410,14 +469,14 @@ function buildDashboardPowerChartData(data) {
             backgroundColor: COLOR_CONSUMED + FILL_OPACITY,
         }),
         buildLineDataset(getChartString("chart_from_battery"), {
-            hidden: true,
             borderColor: COLOR_CONSUMED_FROM_BATTERY,
             backgroundColor: COLOR_CONSUMED_FROM_BATTERY,
+            borderWidth: 1.6,
         }),
         buildLineDataset(getChartString("chart_from_grid"), {
-            hidden: true,
             borderColor: COLOR_CONSUMED_FROM_GRID,
             backgroundColor: COLOR_CONSUMED_FROM_GRID,
+            borderWidth: 1.6,
         }),
     ];
 
@@ -485,8 +544,19 @@ function createDashboardChart(canvasId, data) {
                     y: {
                         min: 0.0,
                         max: chart_data.max,
+                        border: {
+                            display: false,
+                        },
+                        grid: {
+                            color: COLOR_CHART_GRID,
+                        },
+                        ticks: {
+                            color: COLOR_CHART_TEXT,
+                            padding: 8,
+                        },
                         title: {
                             display: true,
+                            color: COLOR_CHART_TEXT,
                             text: 'Watt'
                         }
                     }
@@ -547,14 +617,14 @@ function buildHighResPowerChartData(data) {
             backgroundColor: COLOR_CONSUMED + FILL_OPACITY,
         }),
         buildLineDataset(getChartString("chart_from_battery"), {
-            hidden: true,
             borderColor: COLOR_CONSUMED_FROM_BATTERY,
             backgroundColor: COLOR_CONSUMED_FROM_BATTERY,
+            borderWidth: 1.6,
         }),
         buildLineDataset(getChartString("chart_from_grid"), {
-            hidden: true,
             borderColor: COLOR_CONSUMED_FROM_GRID,
             backgroundColor: COLOR_CONSUMED_FROM_GRID,
+            borderWidth: 1.6,
         }),
     ];
 
@@ -623,8 +693,19 @@ function createHighResChart(canvasId, data) {
                     y: {
                         min: 0.0,
                         max: chart_data.max,
+                        border: {
+                            display: false,
+                        },
+                        grid: {
+                            color: COLOR_CHART_GRID,
+                        },
+                        ticks: {
+                            color: COLOR_CHART_TEXT,
+                            padding: 8,
+                        },
                         title: {
                             display: true,
+                            color: COLOR_CHART_TEXT,
                             text: 'Watt'
                         }
                     }
@@ -685,6 +766,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
         datasets: [{
             label: getChartString("chart_produced_self_kwh"),
             data: [],
+            ...STACKED_BAR_STYLE,
             borderColor: COLOR_PRODUCTION_SELF_CONSUMED,
             backgroundColor: COLOR_PRODUCTION_SELF_CONSUMED,
             borderWidth: 0,
@@ -693,6 +775,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
         {
             label: getChartString("chart_produced_battery_kwh"),
             data: [],
+            ...STACKED_BAR_STYLE,
             borderColor: COLOR_PRODUCTION_TO_BATTERY,
             backgroundColor: COLOR_PRODUCTION_TO_BATTERY,
             borderWidth: 0,
@@ -703,6 +786,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
         chart_data.datasets.push({
             label: getChartString("chart_produced_grid_kwh"),
             data: [],
+            ...STACKED_BAR_STYLE,
             borderColor: COLOR_PRODUCTION_FED_IN,
             backgroundColor: COLOR_PRODUCTION_FED_IN,
             borderWidth: 0,
@@ -761,11 +845,31 @@ function createHistoryDetailsChartProduction(canvasId, data) {
                 scales: {
                     x: {
                         stacked: true,
+                        border: {
+                            display: false,
+                        },
+                        grid: {
+                            display: false,
+                        },
+                        ticks: {
+                            color: COLOR_CHART_TEXT,
+                        },
                     },
                     y: {
                         stacked: true,
+                        border: {
+                            display: false,
+                        },
+                        grid: {
+                            color: COLOR_CHART_GRID,
+                        },
+                        ticks: {
+                            color: COLOR_CHART_TEXT,
+                            padding: 8,
+                        },
                         title: {
                             display: true,
+                            color: COLOR_CHART_TEXT,
                             text: 'kWh'
                         }
                     },
@@ -790,6 +894,7 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
         datasets: [{
             label: getChartString("chart_consumed_pv_kwh"),
             data: [],
+            ...STACKED_BAR_STYLE,
             borderColor: COLOR_CONSUMED_FROM_PV,
             backgroundColor: COLOR_CONSUMED_FROM_PV,
             borderWidth: 0,
@@ -798,6 +903,7 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
         {
             label: getChartString("chart_consumed_battery_kwh"),
             data: [],
+            ...STACKED_BAR_STYLE,
             borderColor: COLOR_CONSUMED_FROM_BATTERY,
             backgroundColor: COLOR_CONSUMED_FROM_BATTERY,
             borderWidth: 0,
@@ -806,6 +912,7 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
         {
             label: getChartString("chart_consumed_grid_kwh"),
             data: [],
+            ...STACKED_BAR_STYLE,
             borderColor: COLOR_CONSUMED_FROM_GRID,
             backgroundColor: COLOR_CONSUMED_FROM_GRID,
             borderWidth: 0,
@@ -859,11 +966,31 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
                 scales: {
                     x: {
                         stacked: true,
+                        border: {
+                            display: false,
+                        },
+                        grid: {
+                            display: false,
+                        },
+                        ticks: {
+                            color: COLOR_CHART_TEXT,
+                        },
                     },
                     y: {
                         stacked: true,
+                        border: {
+                            display: false,
+                        },
+                        grid: {
+                            color: COLOR_CHART_GRID,
+                        },
+                        ticks: {
+                            color: COLOR_CHART_TEXT,
+                            padding: 8,
+                        },
                         title: {
                             display: true,
+                            color: COLOR_CHART_TEXT,
                             text: 'kWh'
                         }
                     }

@@ -864,7 +864,28 @@ function setChartShellLoadingState(elementIds, loading) {
         if (element == null)
             return;
         element.classList.toggle("is-loading", loading === true);
+        if (loading)
+            element.classList.remove("is-refreshing");
+        element.setAttribute("aria-busy", loading === true ? "true" : "false");
     });
+}
+
+function setChartShellRefreshingState(elementIds, refreshing) {
+    elementIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element == null)
+            return;
+        element.classList.toggle("is-refreshing", refreshing === true);
+        element.setAttribute("aria-busy", refreshing === true ? "true" : "false");
+    });
+}
+
+function setPowerFlowLoadingState(loading) {
+    const element = document.getElementById("dashboard_power_flow");
+    if (element == null)
+        return;
+    element.classList.toggle("is-loading", loading === true);
+    element.setAttribute("aria-busy", loading === true ? "true" : "false");
 }
 
 function buildDashboardSkeletonTable(rowCount) {
@@ -883,6 +904,7 @@ function buildDashboardSkeletonTable(rowCount) {
 function setDashboardInitialLoadingState(loading) {
     if (loading) {
         setViewBusyState("view_dashboard", true);
+        setPowerFlowLoadingState(true);
         Object.entries(DASHBOARD_SKELETON_TABLE_ROWS).forEach(([containerId, rowCount]) => {
             const container = document.getElementById(containerId);
             if (container != null)
@@ -893,6 +915,7 @@ function setDashboardInitialLoadingState(loading) {
     }
 
     setViewBusyState("view_dashboard", false);
+    setPowerFlowLoadingState(false);
     setChartShellLoadingState(["dashboard_chart_shell"], false);
 }
 
@@ -1186,9 +1209,12 @@ function updateRealTimeGraph(forceRefresh = false, sourceRecordedAt = null) {
         sourceRecordedAt = currentRecordedAt;
     }
 
-    const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;
+    const shouldShowSkeleton = !gDashboardGraphHasLoadedOnce;
+    const shouldShowRefresh = forceRefresh && gDashboardGraphHasLoadedOnce;
     if (shouldShowSkeleton)
         setChartShellLoadingState(["dashboard_chart_shell"], true);
+    else if (shouldShowRefresh)
+        setChartShellRefreshingState(["dashboard_chart_shell"], true);
 
     gDashboardGraphRefreshInFlight = true;
     fetchRealTimeStatsJSON().then(stats => {
@@ -1200,6 +1226,8 @@ function updateRealTimeGraph(forceRefresh = false, sourceRecordedAt = null) {
     }).finally(() => {
         if (shouldShowSkeleton)
             setChartShellLoadingState(["dashboard_chart_shell"], false);
+        if (shouldShowRefresh)
+            setChartShellRefreshingState(["dashboard_chart_shell"], false);
         gDashboardGraphRefreshInFlight = false;
     });
 }
