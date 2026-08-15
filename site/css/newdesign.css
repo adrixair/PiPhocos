@@ -430,6 +430,17 @@ body {
   padding-bottom: 0.2rem;
 }
 
+@media (min-width: 768px) {
+  #dash_device_table .dashboard-value-cell,
+  #dash_device_table .dashboard-value-text {
+    max-width: none;
+  }
+
+  #dash_device_table .dashboard-value-cell {
+    width: 1%;
+  }
+}
+
 .dashboard-row-icon,
 .app-data-table td:first-child i {
   color: #66707a;
