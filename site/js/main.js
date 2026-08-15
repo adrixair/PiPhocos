@@ -903,8 +903,9 @@ function getInitialHistorySelectionKey(mode, initialDate = "") {
     if (parsed != null)
         return getPeriodKeyFromDate(mode, parsed);
 
-    if (gCurDate instanceof Date && Number.isFinite(gCurDate.getTime()))
-        return getPeriodKeyFromDate(mode, gCurDate);
+    const availability = getDateAvailabilityForMode(mode);
+    if (availability?.max != null)
+        return String(availability.max);
 
     return null;
 }

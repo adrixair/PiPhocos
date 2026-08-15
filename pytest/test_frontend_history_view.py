@@ -34,6 +34,19 @@ def test_all_time_period_fetch_uses_period_endpoint():
     assert 'case histories.ALL:\n            query += "all";' in script
 
 
+def test_history_mode_switch_selects_latest_available_period():
+    script = (ROOT / "site" / "js" / "main.js").read_text(encoding="utf-8")
+    initial_key = re.search(
+        r"function getInitialHistorySelectionKey\(.*?\n}\n",
+        script,
+        flags=re.S,
+    ).group(0)
+
+    assert "const availability = getDateAvailabilityForMode(mode);" in initial_key
+    assert "return String(availability.max);" in initial_key
+    assert "getPeriodKeyFromDate(mode, gCurDate)" not in initial_key
+
+
 def test_billing_card_uses_short_invoice_labels():
     html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     localization = (ROOT / "site" / "js" / "localization.js").read_text(
