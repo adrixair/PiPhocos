@@ -806,12 +806,9 @@ body {
   opacity: 1;
 }
 
-.power-flow-arrow-motion {
-  pointer-events: none;
-}
-
 .power-flow-arrow {
   fill: none;
+  pointer-events: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1435,7 +1432,7 @@ body {
     width: 0.16rem;
   }
 
-  .power-flow-arrow-motion:nth-child(even) {
+  .power-flow-arrow:nth-child(even) {
     display: none;
   }
 
@@ -1528,11 +1525,11 @@ body {
     width: var(--flow-hub-node-width);
   }
 
-  .power-flow-arrow-motion:nth-child(odd) {
+  .power-flow-arrow:nth-child(odd) {
     display: none;
   }
 
-  .power-flow-arrow-motion:nth-child(4n + 1) {
+  .power-flow-arrow:nth-child(4n + 1) {
     display: block;
   }
 
