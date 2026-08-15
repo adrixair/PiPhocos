@@ -126,25 +126,9 @@ body {
   text-align: right;
 }
 
-.app-header-status .app-telemetry-status {
-  font-size: 0.82rem;
-  font-weight: 680;
-}
-
 .app-header-status .app-sidebar-detail {
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   line-height: 1.15;
-}
-
-.app-telemetry-status:not(.is-online):not(.is-offline)::before {
-  display: none;
-}
-
-.app-telemetry-status.is-online::before,
-.app-telemetry-status.is-offline::before {
-  box-shadow: none;
-  height: 0.48rem;
-  width: 0.48rem;
 }
 
 #layoutSidenav #layoutSidenav_nav,
@@ -1240,7 +1224,6 @@ body {
     max-width: 8.5rem;
   }
 
-  .app-header-status .app-telemetry-status,
   .app-header-status .app-sidebar-detail {
     max-width: 100%;
     overflow: hidden;
@@ -1248,12 +1231,8 @@ body {
     white-space: nowrap;
   }
 
-  .app-header-status .app-telemetry-status {
-    font-size: 0.72rem;
-  }
-
   .app-header-status .app-sidebar-detail {
-    font-size: 0.66rem;
+    font-size: 0.72rem;
   }
 
   .container-fluid.app-view {
@@ -1534,7 +1513,7 @@ body {
   }
 
   .dashboard-metrics .dashboard-value-cell {
-    max-width: min(10rem, 42vw);
+    max-width: min(24rem, calc(100vw - 13.5rem));
     min-width: 0;
   }
 

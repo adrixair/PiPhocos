@@ -486,46 +486,6 @@ a {
   font-size: 0.94rem;
 }
 
-.app-telemetry-status {
-  align-items: center;
-  color: var(--app-text-muted);
-  display: inline-flex;
-  font-size: 0.9rem;
-  font-weight: 700;
-  gap: 0.5rem;
-  letter-spacing: 0.02em;
-  padding: 0;
-  transition: color 180ms ease;
-}
-
-.app-telemetry-status::before {
-  background: rgba(31, 24, 19, 0.16);
-  border-radius: 999px;
-  content: "";
-  display: inline-flex;
-  flex: 0 0 auto;
-  height: 0.55rem;
-  width: 0.55rem;
-}
-
-.app-telemetry-status.is-online {
-  color: var(--app-success);
-}
-
-.app-telemetry-status.is-online::before {
-  background: currentColor;
-  box-shadow: 0 0 0 0.22rem rgba(79, 146, 93, 0.12);
-}
-
-.app-telemetry-status.is-offline {
-  color: var(--app-danger);
-}
-
-.app-telemetry-status.is-offline::before {
-  background: currentColor;
-  box-shadow: 0 0 0 0.22rem rgba(186, 79, 79, 0.12);
-}
-
 .app-sidebar-detail {
   color: var(--app-text-soft);
   font-size: 0.94rem;

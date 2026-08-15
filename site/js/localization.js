@@ -14,7 +14,6 @@ let translations = [
     ["sidebar_by_month", "Par mois"],
     ["sidebar_by_year", "Par année"],
     ["sidebar_all_time", "Total"],
-    ["sidebar_live_telemetry", ""],
 
     // Titres
     ["headline_dashboard", "Tableau de bord"],
@@ -467,8 +466,6 @@ let genericStrings = {
     flow_state_discharging: ["Décharge"],
     flow_state_live: ["Temps réel"],
     flow_state_delayed: ["Hors live"],
-    telemetry_status_connected: ["Phocos connecté"],
-    telemetry_status_disconnected: ["Phocos déconnecté"],
     telemetry_detail_last_sample: ["Dernière mesure "],
     telemetry_detail_waiting: ["Dernière mesure indisponible"],
     history_incomplete_note: [

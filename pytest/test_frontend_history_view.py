@@ -71,7 +71,7 @@ def test_billing_card_uses_short_invoice_labels():
     assert "Réduction autoconsommation" not in visible_copy
 
 
-def test_header_telemetry_status_stays_blank_until_status_is_known():
+def test_header_only_displays_the_last_measure():
     html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     script = (ROOT / "site" / "js" / "main.js").read_text(encoding="utf-8")
     localization = (ROOT / "site" / "js" / "localization.js").read_text(
@@ -79,11 +79,14 @@ def test_header_telemetry_status_stays_blank_until_status_is_known():
     )
 
     assert '<div class="app-header-status" aria-live="polite">' in html
-    assert '<div class="app-telemetry-status" id="sidebar_live_telemetry"></div>' in html
     assert '<div class="app-sidebar-detail" id="telemetry_detail"></div>' in html
-    assert '["sidebar_live_telemetry", ""]' in localization
+    assert "sidebar_live_telemetry" not in html
+    assert "telemetry_status_connected" not in localization
+    assert "telemetry_status_disconnected" not in localization
+    assert 'telemetry_detail_last_sample: ["Dernière mesure "]' in localization
     assert "let gTelemetryConnectionHealthy = null;" in script
-    assert 'element.classList.remove("is-online", "is-offline");' in script
+    assert 'document.getElementById("sidebar_live_telemetry")' not in script
+    assert "renderTelemetryDetail();" in script
 
 
 def test_new_design_keeps_header_semantic_and_flow_controls_honest():
@@ -98,7 +101,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815v"' in html
+    assert 'href="css/newdesign.css?build=20260815w"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -147,15 +150,16 @@ def test_dashboard_mobile_values_stay_on_one_line_and_truncate_cleanly():
         encoding="utf-8"
     )
 
-    assert 'src="js/main.js?build=20260815o"' in html
-    assert 'href="css/custom.css?build=20260815c"' in html
+    assert 'src="js/main.js?build=20260815p"' in html
+    assert 'src="js/localization.js?build=20260815n"' in html
+    assert 'href="css/custom.css?build=20260815d"' in html
     assert 'class="dashboard-value-text"' in main_script
     assert ".dashboard-value-text" in custom
     assert "text-overflow: ellipsis;" in custom
     assert "white-space: nowrap;" in custom
     assert "grid-template-columns: 1.8rem minmax(0, 1fr) minmax(4.5rem, max-content) max-content;" in design
     assert "grid-template-columns: 1.65rem minmax(0, 1fr) minmax(4.25rem, max-content) max-content;" in design
-    assert "max-width: min(10rem, 42vw);" in design
+    assert "max-width: min(24rem, calc(100vw - 13.5rem));" in design
     assert ".dashboard-metrics .app-inline-label-text" in design
     assert ".dashboard-metrics .dashboard-info-badge" in design
 

@@ -489,24 +489,7 @@ function renderTelemetryDetail() {
 }
 
 function renderTelemetryStatus() {
-    const element = document.getElementById("sidebar_live_telemetry");
     renderTelemetryDetail();
-    if (element == null)
-        return;
-
-    if (gTelemetryConnectionHealthy == null) {
-        element.textContent = "";
-        element.classList.remove("is-online", "is-offline");
-        return;
-    }
-
-    element.textContent = getGenericString(
-        gTelemetryConnectionHealthy
-            ? "telemetry_status_connected"
-            : "telemetry_status_disconnected"
-    );
-    element.classList.toggle("is-online", gTelemetryConnectionHealthy);
-    element.classList.toggle("is-offline", !gTelemetryConnectionHealthy);
 }
 
 function applyTelemetryStatusFromOverview(stats) {
