@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815j"' in html
+    assert 'href="css/newdesign.css?build=20260815l"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -219,18 +219,22 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert 'id="dashboard_chart_shell"\n                                aria-busy="true"' in html
     assert 'role="img"' in html
     assert ".chart-shell-donut.is-loading::before" in design
-    assert ".chart-shell.is-refreshing::after" in design
-    assert "function setChartShellRefreshingState" in main_script
-    assert "const shouldShowSkeleton = !gDashboardGraphHasLoadedOnce;" in main_script
-    assert "const shouldShowRefresh = forceRefresh && gDashboardGraphHasLoadedOnce;" in main_script
+    assert ".chart-shell.is-refreshing::after" not in design
+    assert "function setChartShellRefreshingState" not in main_script
+    assert "const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;" in main_script
+    assert "const shouldShowRefresh" not in main_script
     assert "hidden: true" not in chart_script
     assert "legendLabels.usePointStyle = true;" in chart_script
     assert "...STACKED_BAR_STYLE" in chart_script
     assert "borderRadius: 0," in chart_script
-    assert "function updateHistoryDetailsChartWidth" in chart_script
-    assert chart_script.count("updateHistoryDetailsChartWidth(canvasId, labels.length);") == 2
-    assert "--chart-preferred-width" in design
-    assert "--chart-preferred-width" in chart_script
+    assert "const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;" in chart_script
+    assert "function centerHistoryDetailsBars" in chart_script
+    assert chart_script.count("centerHistoryDetailsBars(chart_data);") == 2
+    assert 'chartData.labels.unshift(...Array(paddingSlots).fill(""));' in chart_script
+    assert "dataset.data.unshift(...Array(paddingSlots).fill(null));" in chart_script
+    assert "(slotCount - chartData.labels.length) % 2 !== 0" in chart_script
+    assert "--chart-preferred-width" not in design
+    assert "--chart-preferred-width" not in chart_script
     assert "border-top-color: rgba(243, 106, 16, 0.42);" not in design
 
 

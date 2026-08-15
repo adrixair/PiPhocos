@@ -870,16 +870,6 @@ function setChartShellLoadingState(elementIds, loading) {
     });
 }
 
-function setChartShellRefreshingState(elementIds, refreshing) {
-    elementIds.forEach(id => {
-        const element = document.getElementById(id);
-        if (element == null)
-            return;
-        element.classList.toggle("is-refreshing", refreshing === true);
-        element.setAttribute("aria-busy", refreshing === true ? "true" : "false");
-    });
-}
-
 function setPowerFlowLoadingState(loading) {
     const element = document.getElementById("dashboard_power_flow");
     if (element == null)
@@ -1209,12 +1199,9 @@ function updateRealTimeGraph(forceRefresh = false, sourceRecordedAt = null) {
         sourceRecordedAt = currentRecordedAt;
     }
 
-    const shouldShowSkeleton = !gDashboardGraphHasLoadedOnce;
-    const shouldShowRefresh = forceRefresh && gDashboardGraphHasLoadedOnce;
+    const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;
     if (shouldShowSkeleton)
         setChartShellLoadingState(["dashboard_chart_shell"], true);
-    else if (shouldShowRefresh)
-        setChartShellRefreshingState(["dashboard_chart_shell"], true);
 
     gDashboardGraphRefreshInFlight = true;
     fetchRealTimeStatsJSON().then(stats => {
@@ -1226,8 +1213,6 @@ function updateRealTimeGraph(forceRefresh = false, sourceRecordedAt = null) {
     }).finally(() => {
         if (shouldShowSkeleton)
             setChartShellLoadingState(["dashboard_chart_shell"], false);
-        if (shouldShowRefresh)
-            setChartShellRefreshingState(["dashboard_chart_shell"], false);
         gDashboardGraphRefreshInFlight = false;
     });
 }

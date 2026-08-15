@@ -501,9 +501,6 @@ body {
 
 .chart-shell-medium {
   height: 290px;
-  margin-inline: auto;
-  max-width: var(--chart-preferred-width, 760px);
-  width: 100%;
 }
 
 .chart-shell-donut {
@@ -556,35 +553,6 @@ body {
   top: 50%;
   transform: translate(-50%, -50%);
   width: 9.25rem;
-}
-
-.chart-shell.is-refreshing::after {
-  animation: app-chart-refresh 900ms ease-in-out infinite;
-  background: var(--app-accent);
-  border-radius: 999px;
-  content: "";
-  height: 2px;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 32%;
-  z-index: 3;
-}
-
-@keyframes app-chart-refresh {
-  0% {
-    opacity: 0;
-    transform: translateX(-110%);
-  }
-
-  35% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translateX(420%);
-  }
 }
 
 .power-flow-panel .app-panel-body {
@@ -1350,8 +1318,7 @@ body {
   .power-flow-map.is-loading .power-flow-node-value,
   .power-flow-map.is-loading .power-flow-node-meta,
   .power-flow-map.is-loading .power-flow-node-progress,
-  .chart-shell.is-loading::after,
-  .chart-shell.is-refreshing::after {
+  .chart-shell.is-loading::after {
     animation: none;
   }
 }

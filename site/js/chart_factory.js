@@ -135,18 +135,26 @@ const STACKED_BAR_STYLE = Object.freeze({
     borderSkipped: false,
     maxBarThickness: 34,
 });
+const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;
 
-function updateHistoryDetailsChartWidth(canvasId, itemCount) {
-    const canvas = typeof canvasId === "string"
-        ? document.getElementById(canvasId)
-        : canvasId;
-    const shell = canvas?.closest(".chart-shell-medium");
-    if (shell == null)
+function centerHistoryDetailsBars(chartData) {
+    let slotCount = Math.max(
+        HISTORY_DETAILS_MIN_BAR_SLOTS,
+        chartData.labels.length
+    );
+    if ((slotCount - chartData.labels.length) % 2 !== 0)
+        slotCount += 1;
+
+    const paddingSlots = (slotCount - chartData.labels.length) / 2;
+    if (paddingSlots === 0)
         return;
 
-    const count = Math.max(1, Number(itemCount) || 0);
-    const preferredWidth = Math.min(760, Math.max(360, count * 68 + 120));
-    shell.style.setProperty("--chart-preferred-width", preferredWidth + "px");
+    chartData.labels.unshift(...Array(paddingSlots).fill(""));
+    chartData.labels.push(...Array(paddingSlots).fill(""));
+    chartData.datasets.forEach(dataset => {
+        dataset.data.unshift(...Array(paddingSlots).fill(null));
+        dataset.data.push(...Array(paddingSlots).fill(null));
+    });
 }
 
 function configureChartDefaults() {
@@ -815,7 +823,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
             chart_data.datasets[2].data.push(data[index]["produced_feed_in"]);
     }
 
-    updateHistoryDetailsChartWidth(canvasId, labels.length);
+    centerHistoryDetailsBars(chart_data);
 
     if (gChartHistoryDetailsProduced == null) {
         gChartHistoryDetailsProduced = new Chart(canvasId, {
@@ -943,7 +951,7 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
         chart_data.datasets[2].data.push(data[index]["consumed_from_grid"]);
     }
 
-    updateHistoryDetailsChartWidth(canvasId, labels.length);
+    centerHistoryDetailsBars(chart_data);
 
     if (gChartHistoryDetailsConsumed == null) {
         gChartHistoryDetailsConsumed = new Chart(canvasId, {
