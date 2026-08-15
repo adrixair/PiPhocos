@@ -1891,17 +1891,17 @@ function updateHistoryStats(options = {}) {
 function formatEarnedValue(value) {
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue))
-        return numFormat(value, 5);
-    return numFormat(numericValue, 5);
+        return numFormat(value, 2);
+    return numFormat(numericValue, 2);
 }
 
 function formatReductionValue(value) {
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue))
-        return numFormat(value, 5);
+        return numFormat(value, 2);
     if (numericValue === 0)
-        return numFormat(0, 5);
-    return numFormat(-Math.abs(numericValue), 5);
+        return numFormat(0, 2);
+    return numFormat(-Math.abs(numericValue), 2);
 }
 
 
@@ -2172,6 +2172,14 @@ function showViewHistory(mode, options = {}) {
     const historyView = document.getElementById("view_history");
     const showHistoryToolbar = mode != histories.ALL;
     historyView.classList.toggle("history-no-toolbar", !showHistoryToolbar);
+    historyView.classList.remove(
+        "history-mode-today",
+        "history-mode-day",
+        "history-mode-month",
+        "history-mode-year",
+        "history-mode-all"
+    );
+    historyView.classList.add("history-mode-" + mode);
     setElementVisible("history_toolbar", showHistoryToolbar);
 
     switch (mode) {

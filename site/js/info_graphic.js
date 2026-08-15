@@ -3,6 +3,16 @@ let gInfoGraphicLabelLayoutFrame = null;
 
 const INFO_GRAPHIC_ACTIVE_THRESHOLD_W = 20;
 const INFO_GRAPHIC_PLACEHOLDER = "--";
+const INFO_GRAPHIC_ARROW_COUNT = 7;
+const INFO_GRAPHIC_ARROW_DURATION_S = 2.8;
+const INFO_GRAPHIC_LINK_NAMES = [
+    "solar_hub",
+    "grid_hub",
+    "hub_grid_export",
+    "hub_house",
+    "hub_battery_charge",
+    "battery_hub_discharge",
+];
 const INFO_GRAPHIC_LABEL_LAYOUT = {
     solar_hub: { anchor: 0.5, offsetX: 0, offsetY: 0 },
     grid_hub: { anchor: 0.5, offsetX: 0, offsetY: 0 },
@@ -18,6 +28,65 @@ function getInfoGraphicRoot() {
 
 function hasInfoGraphic() {
     return getInfoGraphicRoot() != null;
+}
+
+function getInfoGraphicArrowColorClass(link) {
+    if (link.classList.contains("power-flow-link-solar"))
+        return "power-flow-arrow-stream-solar";
+    if (link.classList.contains("power-flow-link-grid"))
+        return "power-flow-arrow-stream-grid";
+    if (link.classList.contains("power-flow-link-house"))
+        return "power-flow-arrow-stream-house";
+    return "power-flow-arrow-stream-battery";
+}
+
+function ensureInfoGraphicArrowStreams() {
+    const root = getInfoGraphicRoot();
+    const svg = root?.querySelector(".power-flow-svg");
+    if (svg == null)
+        return;
+
+    const svgNamespace = "http://www.w3.org/2000/svg";
+    const xlinkNamespace = "http://www.w3.org/1999/xlink";
+
+    INFO_GRAPHIC_LINK_NAMES.forEach(name => {
+        const link = document.getElementById("flow_link_" + name);
+        if (link == null || document.getElementById("flow_arrows_" + name) != null)
+            return;
+
+        const stream = document.createElementNS(svgNamespace, "g");
+        stream.id = "flow_arrows_" + name;
+        stream.setAttribute(
+            "class",
+            "power-flow-arrow-stream " + getInfoGraphicArrowColorClass(link)
+        );
+
+        for (let index = 0; index < INFO_GRAPHIC_ARROW_COUNT; index++) {
+            const arrow = document.createElementNS(svgNamespace, "path");
+            arrow.setAttribute("class", "power-flow-arrow");
+            arrow.setAttribute("d", "M -5 -3.5 L 4 0 L -5 3.5 L -2 0 Z");
+
+            const motion = document.createElementNS(svgNamespace, "animateMotion");
+            motion.setAttribute("dur", INFO_GRAPHIC_ARROW_DURATION_S + "s");
+            motion.setAttribute(
+                "begin",
+                (-index * INFO_GRAPHIC_ARROW_DURATION_S / INFO_GRAPHIC_ARROW_COUNT).toFixed(2) + "s"
+            );
+            motion.setAttribute("repeatCount", "indefinite");
+            motion.setAttribute("rotate", "auto");
+            motion.setAttribute("calcMode", "linear");
+
+            const motionPath = document.createElementNS(svgNamespace, "mpath");
+            const linkReference = "#flow_link_" + name;
+            motionPath.setAttribute("href", linkReference);
+            motionPath.setAttributeNS(xlinkNamespace, "xlink:href", linkReference);
+            motion.appendChild(motionPath);
+            arrow.appendChild(motion);
+            stream.appendChild(arrow);
+        }
+
+        svg.appendChild(stream);
+    });
 }
 
 function getMetricValue(payload, key) {
@@ -99,6 +168,7 @@ function setInfoGraphicEnabled(enabled) {
     if (root == null)
         return;
 
+    ensureInfoGraphicArrowStreams();
     gInfoGraphicEnabled = enabled === true;
     root.classList.toggle("is-disabled", !gInfoGraphicEnabled);
     queueInfoGraphicLabelLayout();
@@ -133,8 +203,10 @@ function setInfoGraphicBatteryLevel(percent) {
 }
 
 function setInfoGraphicLink(name, power, active) {
+    ensureInfoGraphicArrowStreams();
     const link = document.getElementById("flow_link_" + name);
     const label = document.getElementById("flow_label_" + name);
+    const arrows = document.getElementById("flow_arrows_" + name);
     if (link == null)
         return;
 
@@ -142,8 +214,9 @@ function setInfoGraphicLink(name, power, active) {
     const shouldShow = gInfoGraphicEnabled && active;
 
     link.classList.toggle("is-active", shouldShow);
+    arrows?.classList.toggle("is-active", shouldShow);
     link.style.opacity = shouldShow ? intensity.toFixed(2) : "0";
-    link.style.strokeWidth = shouldShow ? (4.8 + intensity * 2.2).toFixed(2) : "6";
+    link.style.strokeWidth = shouldShow ? (2.4 + intensity * 0.8).toFixed(2) : "3";
 
     if (label != null) {
         label.textContent = shouldShow ? formatInfoGraphicPower(power) : "";
@@ -342,4 +415,7 @@ function updateInfoGraphic(payload, gridConsumptionW, fedInW, pvConsumptionW = n
 }
 
 window.addEventListener("resize", queueInfoGraphicLabelLayout);
-window.addEventListener("DOMContentLoaded", queueInfoGraphicLabelLayout);
+window.addEventListener("DOMContentLoaded", () => {
+    ensureInfoGraphicArrowStreams();
+    queueInfoGraphicLabelLayout();
+});

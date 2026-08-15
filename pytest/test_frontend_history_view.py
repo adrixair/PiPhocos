@@ -71,21 +71,54 @@ def test_billing_card_uses_short_invoice_labels():
     assert "Réduction autoconsommation" not in visible_copy
 
 
-def test_sidebar_telemetry_status_stays_blank_until_status_is_known():
+def test_header_telemetry_status_stays_blank_until_status_is_known():
     html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     script = (ROOT / "site" / "js" / "main.js").read_text(encoding="utf-8")
     localization = (ROOT / "site" / "js" / "localization.js").read_text(
         encoding="utf-8"
     )
 
-    assert (
-        '<div class="app-telemetry-status" id="sidebar_live_telemetry" '
-        'aria-live="polite"></div>'
-    ) in html
-    assert (
-        '<div class="app-sidebar-detail" id="telemetry_detail" '
-        'aria-live="polite"></div>'
-    ) in html
+    assert '<div class="app-header-status" aria-live="polite">' in html
+    assert '<div class="app-telemetry-status" id="sidebar_live_telemetry"></div>' in html
+    assert '<div class="app-sidebar-detail" id="telemetry_detail"></div>' in html
     assert '["sidebar_live_telemetry", ""]' in localization
     assert "let gTelemetryConnectionHealthy = null;" in script
     assert 'element.classList.remove("is-online", "is-offline");' in script
+
+
+def test_new_design_keeps_header_semantic_and_flow_controls_honest():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    design = (ROOT / "site" / "css" / "newdesign.css").read_text(
+        encoding="utf-8"
+    )
+    flow_script = (ROOT / "site" / "js" / "info_graphic.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'href="css/newdesign.css?build=20260815a"' in html
+    assert '<div class="app-header-status" aria-live="polite">' in html
+    assert "app-sidebar-footer" not in html
+    assert "fa-user" not in html
+    assert html.count("app-nav-link-temporal") == 5
+    assert "INFO_GRAPHIC_ARROW_COUNT = 7" in flow_script
+    assert 'motion.setAttribute("rotate", "auto")' in flow_script
+    assert 'stroke-dasharray: none !important;' in design
+    assert '.power-flow-arrow-stream.is-active' in design
+
+
+def test_new_design_formats_invoice_amounts_to_cents():
+    script = (ROOT / "site" / "js" / "main.js").read_text(encoding="utf-8")
+    earned_formatter = re.search(
+        r"function formatEarnedValue\(.*?\n}\n",
+        script,
+        flags=re.S,
+    ).group(0)
+    reduction_formatter = re.search(
+        r"function formatReductionValue\(.*?\n}\n",
+        script,
+        flags=re.S,
+    ).group(0)
+
+    assert "numFormat(numericValue, 2)" in earned_formatter
+    assert "numFormat(-Math.abs(numericValue), 2)" in reduction_formatter
+    assert ", 5)" not in earned_formatter + reduction_formatter

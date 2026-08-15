@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="description" content="" />
     <meta name="author" content="" />
-    <meta name="theme-color" content="#f5f2ec" />
+    <meta name="theme-color" content="#f7f8fa" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -21,6 +21,7 @@
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
     <link href="css/custom.css?build=20260708a" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20260815a" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -28,11 +29,16 @@
         <button class="app-icon-button order-0 me-2" id="sidebarToggle" type="button" aria-label="Ouvrir le menu">
             <i class="fas fa-bars"></i>
         </button>
-        <a class="navbar-brand app-brand" href="javascript:showViewDashboard();">
+        <a class="navbar-brand app-brand" href="#" onclick="showViewDashboard(); return false;">
             <img class="app-brand-logo" src="assets/phocos-logo.png?build=20260404c" alt="PiPhocos" />
             <span class="visually-hidden" id="instance-name">PiPhocos</span>
         </a>
-        <div class="app-topbar-actions ms-auto"></div>
+        <div class="app-topbar-actions ms-auto">
+            <div class="app-header-status" aria-live="polite">
+                <div class="app-telemetry-status" id="sidebar_live_telemetry"></div>
+                <div class="app-sidebar-detail" id="telemetry_detail"></div>
+            </div>
+        </div>
     </nav>
 
     <div id="layoutSidenav">
@@ -42,55 +48,44 @@
                     <div class="nav app-nav">
                         <div class="sb-sidenav-menu-heading" id="sidebar_headline_overview">Vue d'ensemble</div>
                         <a class="nav-link app-nav-link" data-nav-target="dashboard"
-                            href="javascript:showViewDashboard();collapseSidebar();">
+                            href="#" onclick="showViewDashboard(); collapseSidebar(); return false;">
                             <div class="sb-nav-link-icon"><i class="fas fa-grip"></i></div>
                             <div id="sidebar_dashboard">Tableau de bord</div>
                         </a>
                         <a class="nav-link app-nav-link" data-nav-target="statistics"
-                            href="javascript:showViewStatistics();collapseSidebar();">
+                            href="#" onclick="showViewStatistics(); collapseSidebar(); return false;">
                             <div class="sb-nav-link-icon"><i class="fas fa-chart-simple"></i></div>
                             <div id="sidebar_statistics">Statistiques</div>
                         </a>
-                        <a class="nav-link app-nav-link" data-nav-target="today"
-                            href="javascript:showViewHistory(histories.TODAY);collapseSidebar();">
-                            <div class="sb-nav-link-icon"><i class="fas fa-star"></i></div>
+                        <a class="nav-link app-nav-link app-nav-link-temporal" data-nav-target="today"
+                            href="#" onclick="showViewHistory(histories.TODAY); collapseSidebar(); return false;">
                             <div id="sidebar_today">Aujourd'hui</div>
                         </a>
 
                         <div class="sb-sidenav-menu-heading" id="sidebar_headline_history">Historique</div>
-                        <a class="nav-link app-nav-link" data-nav-target="day"
-                            href="javascript:showViewHistory(histories.DAY);collapseSidebar();">
-                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-day"></i></div>
+                        <a class="nav-link app-nav-link app-nav-link-temporal" data-nav-target="day"
+                            href="#" onclick="showViewHistory(histories.DAY); collapseSidebar(); return false;">
                             <div id="sidebar_by_day">Par jour</div>
                         </a>
-                        <a class="nav-link app-nav-link" data-nav-target="month"
-                            href="javascript:showViewHistory(histories.MONTH);collapseSidebar();">
-                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-days"></i></div>
+                        <a class="nav-link app-nav-link app-nav-link-temporal" data-nav-target="month"
+                            href="#" onclick="showViewHistory(histories.MONTH); collapseSidebar(); return false;">
                             <div id="sidebar_by_month">Par mois</div>
                         </a>
-                        <a class="nav-link app-nav-link" data-nav-target="year"
-                            href="javascript:showViewHistory(histories.YEAR);collapseSidebar();">
-                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-week"></i></div>
+                        <a class="nav-link app-nav-link app-nav-link-temporal" data-nav-target="year"
+                            href="#" onclick="showViewHistory(histories.YEAR); collapseSidebar(); return false;">
                             <div id="sidebar_by_year">Par année</div>
                         </a>
-                        <a class="nav-link app-nav-link" data-nav-target="all"
-                            href="javascript:showViewHistory(histories.ALL);collapseSidebar();">
-                            <div class="sb-nav-link-icon"><i class="fas fa-calendar"></i></div>
+                        <a class="nav-link app-nav-link app-nav-link-temporal" data-nav-target="all"
+                            href="#" onclick="showViewHistory(histories.ALL); collapseSidebar(); return false;">
                             <div id="sidebar_all_time">Total</div>
                         </a>
 
                         <div class="sb-sidenav-menu-heading" id="sidebar_headline_misc">Divers</div>
                         <a class="nav-link app-nav-link" data-nav-target="csv"
-                            href="javascript:showViewCsv();collapseSidebar();">
+                            href="#" onclick="showViewCsv(); collapseSidebar(); return false;">
                             <div class="sb-nav-link-icon"><i class="fas fa-file-csv"></i></div>
                             <div id="sidebar_csv">Téléchargement CSV</div>
                         </a>
-                    </div>
-                </div>
-                <div class="app-sidebar-footer">
-                    <div class="app-sidebar-status-stack">
-                        <div class="app-telemetry-status" id="sidebar_live_telemetry" aria-live="polite"></div>
-                        <div class="app-sidebar-detail" id="telemetry_detail" aria-live="polite"></div>
                     </div>
                 </div>
             </nav>
@@ -117,29 +112,29 @@
                             <div class="power-flow-map" id="dashboard_power_flow">
                                 <svg class="power-flow-svg" viewBox="0 0 860 360" preserveAspectRatio="none"
                                     aria-hidden="true">
-                                    <path class="power-flow-track" d="M 188 110 C 265 110, 330 140, 410 170" />
-                                    <path class="power-flow-track" d="M 188 250 C 265 250, 330 220, 410 190" />
-                                    <path class="power-flow-track" d="M 450 170 C 530 140, 595 110, 672 110" />
-                                    <path class="power-flow-track" d="M 450 190 C 530 220, 595 250, 672 250" />
+                                    <path class="power-flow-track" d="M 226 105 C 292 105, 318 160, 380 160" />
+                                    <path class="power-flow-track" d="M 226 255 C 292 255, 318 200, 380 200" />
+                                    <path class="power-flow-track" d="M 480 160 C 542 160, 568 105, 634 105" />
+                                    <path class="power-flow-track" d="M 480 200 C 542 200, 568 255, 634 255" />
 
                                     <path id="flow_link_solar_hub"
                                         class="power-flow-link power-flow-link-solar power-flow-link-forward"
-                                        d="M 188 110 C 265 110, 330 140, 410 170" />
+                                        d="M 226 105 C 292 105, 318 160, 380 160" />
                                     <path id="flow_link_grid_hub"
                                         class="power-flow-link power-flow-link-grid power-flow-link-forward"
-                                        d="M 188 250 C 265 250, 330 220, 410 190" />
+                                        d="M 226 255 C 292 255, 318 200, 380 200" />
                                     <path id="flow_link_hub_grid_export"
                                         class="power-flow-link power-flow-link-grid power-flow-link-forward"
-                                        d="M 410 190 C 330 220, 265 250, 188 250" />
+                                        d="M 380 200 C 318 200, 292 255, 226 255" />
                                     <path id="flow_link_hub_house"
                                         class="power-flow-link power-flow-link-house power-flow-link-forward"
-                                        d="M 450 170 C 530 140, 595 110, 672 110" />
+                                        d="M 480 160 C 542 160, 568 105, 634 105" />
                                     <path id="flow_link_hub_battery_charge"
                                         class="power-flow-link power-flow-link-battery power-flow-link-forward"
-                                        d="M 450 190 C 530 220, 595 250, 672 250" />
+                                        d="M 480 200 C 542 200, 568 255, 634 255" />
                                     <path id="flow_link_battery_hub_discharge"
                                         class="power-flow-link power-flow-link-battery power-flow-link-forward"
-                                        d="M 672 250 C 595 250, 530 220, 450 190" />
+                                        d="M 634 255 C 568 255, 542 200, 480 200" />
                                 </svg>
 
                                 <div class="power-flow-connection-label power-flow-connection-label-solar power-flow-connection-label-solar-hub"
@@ -225,6 +220,27 @@
                         </div>
                     </section>
 
+                    <section class="app-panel chart-panel">
+                        <div class="app-panel-head app-panel-head-between">
+                            <span class="app-panel-title" id="dash_card_24h">Dernières données</span>
+                            <div class="app-segmented-control" aria-label="Période du graphique">
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="2"
+                                    onclick="changeDashboardGraphTimeSpan(2);">2h</button>
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="4"
+                                    onclick="changeDashboardGraphTimeSpan(4);">4h</button>
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="12"
+                                    onclick="changeDashboardGraphTimeSpan(12);">12h</button>
+                                <button class="app-segmented-button" type="button" data-dashboard-hours="24"
+                                    onclick="changeDashboardGraphTimeSpan(24);">24h</button>
+                            </div>
+                        </div>
+                        <div class="app-panel-body">
+                            <div class="chart-shell chart-shell-dashboard" id="dashboard_chart_shell">
+                                <canvas id="chart_dashboard"></canvas>
+                            </div>
+                        </div>
+                    </section>
+
                     <div class="dashboard-grid">
                         <section class="app-panel metric-panel">
                             <div class="app-panel-head">
@@ -272,26 +288,6 @@
                         </section>
                     </div>
 
-                    <section class="app-panel chart-panel">
-                        <div class="app-panel-head app-panel-head-between">
-                            <span class="app-panel-title" id="dash_card_24h">Dernières données</span>
-                            <div class="app-segmented-control" aria-label="Periode du graphique">
-                                <button class="app-segmented-button" type="button" data-dashboard-hours="2"
-                                    onclick="changeDashboardGraphTimeSpan(2);">2h</button>
-                                <button class="app-segmented-button" type="button" data-dashboard-hours="4"
-                                    onclick="changeDashboardGraphTimeSpan(4);">4h</button>
-                                <button class="app-segmented-button" type="button" data-dashboard-hours="12"
-                                    onclick="changeDashboardGraphTimeSpan(12);">12h</button>
-                                <button class="app-segmented-button" type="button" data-dashboard-hours="24"
-                                    onclick="changeDashboardGraphTimeSpan(24);">24h</button>
-                            </div>
-                        </div>
-                        <div class="app-panel-body">
-                            <div class="chart-shell chart-shell-dashboard" id="dashboard_chart_shell">
-                                <canvas id="chart_dashboard"></canvas>
-                            </div>
-                        </div>
-                    </section>
                 </div>
 
                 <div class="container-fluid px-4 app-view" id="view_statistics" data-default-display="block">
@@ -740,8 +736,8 @@
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
     <script src="js/chart_factory.js?build=20260407h"></script>
-    <script src="js/info_graphic.js?build=20260708a"></script>
-    <script src="js/main.js?build=20260815a"></script>
+    <script src="js/info_graphic.js?build=20260815a"></script>
+    <script src="js/main.js?build=20260815b"></script>
 </body>
 
 </html>
