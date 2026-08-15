@@ -131,10 +131,23 @@ const COLOR_CONSUMED = COLOR_FLOW_HOME;
 const COLOR_CHART_TEXT = getAppColor("--app-text-soft", "#5a6169");
 const COLOR_CHART_GRID = getAppColor("--app-border", "#e2e5e9");
 const STACKED_BAR_STYLE = Object.freeze({
-    borderRadius: 3,
+    borderRadius: 0,
     borderSkipped: false,
     maxBarThickness: 34,
 });
+
+function updateHistoryDetailsChartWidth(canvasId, itemCount) {
+    const canvas = typeof canvasId === "string"
+        ? document.getElementById(canvasId)
+        : canvasId;
+    const shell = canvas?.closest(".chart-shell-medium");
+    if (shell == null)
+        return;
+
+    const count = Math.max(1, Number(itemCount) || 0);
+    const preferredWidth = Math.min(760, Math.max(360, count * 68 + 120));
+    shell.style.setProperty("--chart-preferred-width", preferredWidth + "px");
+}
 
 function configureChartDefaults() {
     if (typeof Chart === "undefined" || Chart.defaults == null)
@@ -802,6 +815,8 @@ function createHistoryDetailsChartProduction(canvasId, data) {
             chart_data.datasets[2].data.push(data[index]["produced_feed_in"]);
     }
 
+    updateHistoryDetailsChartWidth(canvasId, labels.length);
+
     if (gChartHistoryDetailsProduced == null) {
         gChartHistoryDetailsProduced = new Chart(canvasId, {
             type: "bar",
@@ -882,6 +897,7 @@ function createHistoryDetailsChartProduction(canvasId, data) {
     gChartHistoryDetailsProduced.data.labels = chart_data.labels;
     gChartHistoryDetailsProduced.data.datasets = chart_data.datasets;
     gChartHistoryDetailsProduced.options.locale = getLocale();
+    gChartHistoryDetailsProduced.resize();
     gChartHistoryDetailsProduced.update("none");
 }
 
@@ -926,6 +942,8 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
         chart_data.datasets[1].data.push(data[index]["consumed_from_battery"]);
         chart_data.datasets[2].data.push(data[index]["consumed_from_grid"]);
     }
+
+    updateHistoryDetailsChartWidth(canvasId, labels.length);
 
     if (gChartHistoryDetailsConsumed == null) {
         gChartHistoryDetailsConsumed = new Chart(canvasId, {
@@ -1003,5 +1021,6 @@ function createHistoryDetailsChartConsumption(canvasId, data) {
     gChartHistoryDetailsConsumed.data.labels = chart_data.labels;
     gChartHistoryDetailsConsumed.data.datasets = chart_data.datasets;
     gChartHistoryDetailsConsumed.options.locale = getLocale();
+    gChartHistoryDetailsConsumed.resize();
     gChartHistoryDetailsConsumed.update("none");
 }

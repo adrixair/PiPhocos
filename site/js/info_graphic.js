@@ -409,9 +409,7 @@ function renderInfoGraphicFromOverview(payload) {
     setInfoGraphicNode(
         "solar",
         solarActive ? formatInfoGraphicPower(solarPower) : "0 W",
-        solarActive
-            ? getInfoGraphicString("flow_state_solar_active", "Solar active")
-            : getInfoGraphicString("flow_state_idle", "Standby"),
+        "",
         solarActive
     );
     setInfoGraphicNode("grid", gridValue, gridMeta, gridActive);
@@ -425,9 +423,7 @@ function renderInfoGraphicFromOverview(payload) {
     setInfoGraphicNode(
         "home",
         homeActive ? formatInfoGraphicPower(housePower) : "0 W",
-        homeActive
-            ? getInfoGraphicString("flow_state_home_active", "Live load")
-            : getInfoGraphicString("flow_state_idle", "Standby"),
+        "",
         homeActive
     );
     setInfoGraphicNode("battery", batteryValue, batteryMeta, batteryActive);

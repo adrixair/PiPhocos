@@ -98,7 +98,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815i"' in html
+    assert 'href="css/newdesign.css?build=20260815j"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -156,10 +156,17 @@ def test_dashboard_flow_displays_inverter_load_without_redundant_subtitle():
     assert 'formatInfoGraphicPercent(inverterLoad),\n        "",' in flow_script
     assert 'batteryMeta += " · " + formatInfoGraphicPercent(batterySoc);' in flow_script
     assert 'batteryMeta += " | "' not in flow_script
-    assert 'flow_state_home_active: ["Consommation active"]' in localization
-    assert 'flow_state_home_active: ["Charge en cours"]' not in localization
+    assert 'flow_state_home_active' not in localization
+    assert 'flow_state_solar_active' not in localization
+    assert 'flow_state_charging: ["Charge"]' in localization
+    assert 'flow_state_discharging: ["Décharge"]' in localization
+    assert flow_script.count('formatInfoGraphicPower(housePower) : "0 W",\n        "",') == 1
+    assert flow_script.count('formatInfoGraphicPower(solarPower) : "0 W",\n        "",') == 1
     assert 'class="power-flow-node-progress"' in html
-    assert 'max-width: 65rem;' in design
+    assert 'max-width: 68rem;' in design
+    assert '.power-flow-node-meta {' in design
+    assert 'text-overflow: ellipsis;' in design
+    assert 'white-space: nowrap;' in design
     assert 'getInfoGraphicString("flow_state_live"' not in flow_script
 
 
@@ -219,6 +226,12 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "hidden: true" not in chart_script
     assert "legendLabels.usePointStyle = true;" in chart_script
     assert "...STACKED_BAR_STYLE" in chart_script
+    assert "borderRadius: 0," in chart_script
+    assert "function updateHistoryDetailsChartWidth" in chart_script
+    assert chart_script.count("updateHistoryDetailsChartWidth(canvasId, labels.length);") == 2
+    assert "--chart-preferred-width" in design
+    assert "--chart-preferred-width" in chart_script
+    assert "border-top-color: rgba(243, 106, 16, 0.42);" not in design
 
 
 def test_new_design_formats_invoice_amounts_to_cents():
