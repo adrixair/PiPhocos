@@ -32,7 +32,7 @@ function isDashboardChartInteractionActive() {
 function useTouchChartControls() {
     return typeof window !== "undefined"
         && typeof window.matchMedia === "function"
-        && window.matchMedia("(max-width: 767.98px), (pointer: coarse)").matches;
+        && window.matchMedia("(max-width: 991.98px), (pointer: coarse)").matches;
 }
 
 function syncDashboardChartSeriesControls() {

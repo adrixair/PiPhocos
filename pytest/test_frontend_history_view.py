@@ -101,7 +101,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260816a"' in html
+    assert 'href="css/newdesign.css?build=20260816b"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -263,11 +263,14 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;" in main_script
     assert "const shouldShowRefresh" not in main_script
     assert "hidden: true" not in chart_script
+    assert 'src="js/chart_factory.js?build=20260816a"' in html
     assert "legendLabels.usePointStyle = true;" in chart_script
     assert html.count('data-dashboard-series=') == 4
     assert "function toggleDashboardChartSeries(datasetIndex)" in chart_script
-    assert 'window.matchMedia("(max-width: 767.98px), (pointer: coarse)")' in chart_script
+    assert 'window.matchMedia("(max-width: 991.98px), (pointer: coarse)")' in chart_script
     assert "chart.options.plugins.legend.display = !touchLayout;" in chart_script
+    assert "--flow-side-node-width: clamp(5.8rem, 14vw, 8rem);" in design
+    assert "--flow-hub-node-width: clamp(5.1rem, 12vw, 7rem);" in design
     assert html.count("data-chart-series-controls=") == 5
     assert "function syncChartSeriesControls(chart, canvasId)" in chart_script
     assert "function buildCartesianChartInteraction()" in chart_script
