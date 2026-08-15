@@ -2192,7 +2192,7 @@ function showViewHistory(mode, options = {}) {
             setElementVisible("selection_day", true);
             setElementVisible("history_card_graphs", false);
             setElementVisible("history_card_high_res", true);
-            setActiveSidebarLink("today");
+            setActiveSidebarLink("day");
         case histories.DAY:
             document.getElementById("headline_history").innerHTML = getHistoryString("daily_data");
             setElementVisible("selection_prev", true);

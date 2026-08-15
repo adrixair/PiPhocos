@@ -95,11 +95,17 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260815a"' in html
+    assert 'href="css/newdesign.css?build=20260815c"' in html
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
-    assert html.count("app-nav-link-temporal") == 5
+    assert html.count("app-nav-link-temporal") == 4
+    assert 'data-nav-target="today"' not in html
+    assert 'data-nav-target="day"' in html and "fa-calendar-day" in html
+    assert 'data-nav-target="month"' in html and "fa-calendar-days" in html
+    assert 'data-nav-target="year"' in html and "fa-calendar" in html
+    assert 'data-nav-target="all"' in html and "fa-chart-line" in html
+    assert "--app-flow-grid: #dc2626;" in design
     assert "INFO_GRAPHIC_ARROW_COUNT = 7" in flow_script
     assert 'motion.setAttribute("rotate", "auto")' in flow_script
     assert 'stroke-dasharray: none !important;' in design

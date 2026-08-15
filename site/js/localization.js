@@ -8,7 +8,6 @@ let translations = [
     // Barre laterale
     ["sidebar_headline_overview", "Vue d'ensemble"],
     ["sidebar_dashboard", "Tableau de bord"],
-    ["sidebar_today", "Aujourd'hui"],
     ["sidebar_statistics", "Statistiques"],
     ["sidebar_headline_history", "Historique"],
     ["sidebar_by_day", "Par jour"],

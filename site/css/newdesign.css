@@ -18,10 +18,10 @@
   --app-accent-strong: #d95408;
   --app-accent-warm: #ff9a57;
   --app-flow-solar: #f36a10;
-  --app-flow-grid: #68717c;
+  --app-flow-grid: #dc2626;
   --app-flow-battery: #19a99a;
   --app-flow-home: #2e6bd9;
-  --app-flow-export: #d9483b;
+  --app-flow-export: #b91c1c;
   --app-flow-hub: #343a40;
   --app-control-fill: #ffffff;
   --app-control-fill-hover: #f8f9fa;
@@ -192,7 +192,7 @@ body {
 }
 
 .app-nav-link-temporal {
-  padding-left: 2.68rem;
+  padding-left: 0.78rem;
 }
 
 .app-nav-link:hover {
