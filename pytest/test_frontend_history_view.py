@@ -122,3 +122,15 @@ def test_new_design_formats_invoice_amounts_to_cents():
     assert "numFormat(numericValue, 2)" in earned_formatter
     assert "numFormat(-Math.abs(numericValue), 2)" in reduction_formatter
     assert ", 5)" not in earned_formatter + reduction_formatter
+
+
+def test_dynamic_inverter_count_values_are_localized_in_french():
+    localization = (ROOT / "site" / "js" / "localization.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert '"Single unit only": ["Onduleur unique"]' in localization
+    assert (
+        '"Multiple units connected": ["Plusieurs onduleurs connectés"]'
+        in localization
+    )

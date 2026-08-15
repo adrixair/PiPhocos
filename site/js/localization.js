@@ -419,6 +419,10 @@ let dashboardValueStrings = {
         "Shutdown mode": ["Arrêt"],
         "Unknown": ["Inconnu"],
     },
+    metric_other_units: {
+        "Single unit only": ["Onduleur unique"],
+        "Multiple units connected": ["Plusieurs onduleurs connectés"],
+    },
     metric_ac_output_mode: {
         "Single Any-Grid unit": ["Onduleur seul"],
         "Parallel output": ["Système en parallèle"],
