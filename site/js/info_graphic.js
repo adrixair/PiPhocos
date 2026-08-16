@@ -1,11 +1,13 @@
 var gInfoGraphicEnabled = false;
 let gInfoGraphicLabelLayoutFrame = null;
 let gInfoGraphicResizeObserver = null;
+let gInfoGraphicArrowAnimationFrame = null;
+let gInfoGraphicArrowAnimationStartedAt = null;
 
 const INFO_GRAPHIC_ACTIVE_THRESHOLD_W = 20;
 const INFO_GRAPHIC_PLACEHOLDER = "--";
 const INFO_GRAPHIC_ARROW_COUNT = 10;
-const INFO_GRAPHIC_ARROW_DURATION_S = 3.2;
+const INFO_GRAPHIC_ARROW_DURATION_MS = 3200;
 const INFO_GRAPHIC_LINK_NAMES = [
     "solar_hub",
     "grid_hub",
@@ -48,7 +50,6 @@ function ensureInfoGraphicArrowStreams() {
         return;
 
     const svgNamespace = "http://www.w3.org/2000/svg";
-    const xlinkNamespace = "http://www.w3.org/1999/xlink";
 
     INFO_GRAPHIC_LINK_NAMES.forEach(name => {
         const link = document.getElementById("flow_link_" + name);
@@ -67,29 +68,72 @@ function ensureInfoGraphicArrowStreams() {
             arrow.setAttribute("class", "power-flow-arrow");
             arrow.setAttribute("d", "M -4.5 -3 L 0.75 0 L -4.5 3");
             arrow.setAttribute("vector-effect", "non-scaling-stroke");
-
-            const motion = document.createElementNS(svgNamespace, "animateMotion");
-            motion.setAttribute("dur", INFO_GRAPHIC_ARROW_DURATION_S + "s");
-            motion.setAttribute(
-                "begin",
-                (-index * INFO_GRAPHIC_ARROW_DURATION_S / INFO_GRAPHIC_ARROW_COUNT).toFixed(2) + "s"
-            );
-            motion.setAttribute("repeatCount", "indefinite");
-            motion.setAttribute("rotate", "auto");
-            motion.setAttribute("calcMode", "linear");
-
-            const motionPath = document.createElementNS(svgNamespace, "mpath");
-            const linkReference = "#flow_link_" + name;
-            motionPath.setAttribute("href", linkReference);
-            motionPath.setAttributeNS(xlinkNamespace, "xlink:href", linkReference);
-            motion.appendChild(motionPath);
-            // Safari applique animateMotion de facon fiable aux elements graphiques SVG.
-            arrow.appendChild(motion);
+            arrow.dataset.flowPhase = (index / INFO_GRAPHIC_ARROW_COUNT).toFixed(3);
+            arrow.setAttribute("visibility", "hidden");
             stream.appendChild(arrow);
         }
 
         svg.appendChild(stream);
     });
+}
+
+function getInfoGraphicArrowProgress(timestamp) {
+    if (gInfoGraphicArrowAnimationStartedAt == null)
+        gInfoGraphicArrowAnimationStartedAt = timestamp;
+    return ((timestamp - gInfoGraphicArrowAnimationStartedAt) % INFO_GRAPHIC_ARROW_DURATION_MS)
+        / INFO_GRAPHIC_ARROW_DURATION_MS;
+}
+
+function positionInfoGraphicArrowStream(name, progress) {
+    const link = document.getElementById("flow_link_" + name);
+    const stream = document.getElementById("flow_arrows_" + name);
+    if (link == null || stream == null)
+        return;
+
+    const length = link.getTotalLength();
+    if (!Number.isFinite(length) || length <= 0)
+        return;
+
+    const tangentOffset = Math.max(0.75, Math.min(2.5, length * 0.015));
+    stream.querySelectorAll(".power-flow-arrow").forEach(arrow => {
+        const phase = Number(arrow.dataset.flowPhase || 0);
+        const distance = ((progress + phase) % 1) * length;
+        const before = link.getPointAtLength(Math.max(0, distance - tangentOffset));
+        const after = link.getPointAtLength(Math.min(length, distance + tangentOffset));
+        const point = link.getPointAtLength(distance);
+        const angle = Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI;
+
+        arrow.setAttribute(
+            "transform",
+            `translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) rotate(${angle.toFixed(2)})`
+        );
+        arrow.removeAttribute("visibility");
+    });
+}
+
+function animateInfoGraphicArrows(timestamp) {
+    gInfoGraphicArrowAnimationFrame = null;
+    const root = getInfoGraphicRoot();
+    if (root == null || root.offsetParent == null || document.hidden)
+        return;
+
+    const activeNames = INFO_GRAPHIC_LINK_NAMES.filter(name =>
+        document.getElementById("flow_arrows_" + name)?.classList.contains("is-active")
+    );
+    if (activeNames.length === 0)
+        return;
+
+    const progress = getInfoGraphicArrowProgress(timestamp);
+    activeNames.forEach(name => positionInfoGraphicArrowStream(name, progress));
+    gInfoGraphicArrowAnimationFrame = requestAnimationFrame(animateInfoGraphicArrows);
+}
+
+function startInfoGraphicArrowAnimation() {
+    if (gInfoGraphicArrowAnimationFrame != null)
+        return;
+    if (gInfoGraphicArrowAnimationStartedAt == null)
+        gInfoGraphicArrowAnimationStartedAt = performance.now();
+    gInfoGraphicArrowAnimationFrame = requestAnimationFrame(animateInfoGraphicArrows);
 }
 
 function getMetricValue(payload, key) {
@@ -294,6 +338,11 @@ function setInfoGraphicLink(name, power, active) {
     const intensity = Math.min(1, Math.max(0.35, Math.abs(power) / 2600));
     const shouldShow = gInfoGraphicEnabled && active;
 
+    if (shouldShow) {
+        const progress = getInfoGraphicArrowProgress(performance.now());
+        positionInfoGraphicArrowStream(name, progress);
+    }
+
     link.classList.toggle("is-active", shouldShow);
     arrows?.classList.toggle("is-active", shouldShow);
     link.style.opacity = shouldShow ? intensity.toFixed(2) : "0";
@@ -303,6 +352,9 @@ function setInfoGraphicLink(name, power, active) {
         label.textContent = shouldShow ? formatInfoGraphicPower(power) : "";
         label.classList.toggle("is-active", shouldShow);
     }
+
+    if (shouldShow)
+        startInfoGraphicArrowAnimation();
 }
 
 function resetInfoGraphic() {
@@ -492,6 +544,10 @@ function updateInfoGraphic(payload, gridConsumptionW, fedInW, pvConsumptionW = n
 }
 
 window.addEventListener("resize", queueInfoGraphicLabelLayout);
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden)
+        startInfoGraphicArrowAnimation();
+});
 window.addEventListener("DOMContentLoaded", () => {
     ensureInfoGraphicArrowStreams();
     if (typeof ResizeObserver === "function") {

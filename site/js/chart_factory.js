@@ -244,13 +244,55 @@ const STACKED_BAR_STYLE = Object.freeze({
 });
 const HISTORY_DETAILS_MIN_BAR_SLOTS = 10;
 
+const STACKED_BAR_HOVER_LIFT_PLUGIN = {
+    id: "stackedBarHoverLift",
+    beforeDatasetsDraw(chart) {
+        if (chart.config.type !== "bar")
+            return;
+
+        const lifted = [];
+        const seen = new Set();
+        chart.getActiveElements().forEach(active => {
+            const element = active.element;
+            if (element == null || seen.has(element))
+                return;
+            seen.add(element);
+            lifted.push({ element: element, y: element.y, base: element.base });
+            element.y -= 2;
+            element.base -= 2;
+        });
+        chart.$stackedBarHoverLift = lifted;
+    },
+    afterDatasetsDraw(chart) {
+        (chart.$stackedBarHoverLift || []).forEach(original => {
+            original.element.y = original.y;
+            original.element.base = original.base;
+        });
+        chart.$stackedBarHoverLift = [];
+    },
+};
+
+if (typeof Chart !== "undefined")
+    Chart.register(STACKED_BAR_HOVER_LIFT_PLUGIN);
+
+function getChartHoverColor(color) {
+    const match = /^#([0-9a-f]{6})$/i.exec(String(color));
+    if (match == null)
+        return color;
+
+    const value = Number.parseInt(match[1], 16);
+    const channels = [value >> 16, (value >> 8) & 0xff, value & 0xff];
+    const lifted = channels.map(channel => Math.round(channel + (255 - channel) * 0.14));
+    return `rgb(${lifted[0]}, ${lifted[1]}, ${lifted[2]})`;
+}
+
 function buildStackedBarStyle(color) {
     return {
         ...STACKED_BAR_STYLE,
         backgroundColor: color,
         borderColor: color,
         borderWidth: 0,
-        hoverBackgroundColor: color,
+        hoverBackgroundColor: getChartHoverColor(color),
         hoverBorderColor: color,
         hoverBorderWidth: 0,
     };

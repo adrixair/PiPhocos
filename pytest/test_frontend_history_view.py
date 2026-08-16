@@ -119,15 +119,17 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert "min-height: 260px;" in design
     assert "function toggleDashboardSettings()" in main_script
     assert "INFO_GRAPHIC_ARROW_COUNT = 10" in flow_script
-    assert 'motion.setAttribute("rotate", "auto")' in flow_script
+    assert "function positionInfoGraphicArrowStream(name, progress)" in flow_script
+    assert "getPointAtLength" in flow_script
+    assert "requestAnimationFrame(animateInfoGraphicArrows)" in flow_script
     assert 'stroke-dasharray: none !important;' in design
     assert '.power-flow-arrow-stream.is-active' in design
-    assert "arrow.appendChild(motion);" in flow_script
-    assert "motionGroup" not in flow_script
+    assert "animateMotion" not in flow_script
+    assert 'arrow.setAttribute("visibility", "hidden")' in flow_script
     assert ".power-flow-arrow:nth-child(even)" in design
     assert ".power-flow-arrow:nth-child(4n + 1)" in design
     assert "transform: scale(0.8)" not in design
-    assert 'src="js/info_graphic.js?build=20260815u"' in html
+    assert 'src="js/info_graphic.js?build=20260816c"' in html
     assert 'id="flow_track_solar_hub"' in html
     assert 'viewBox="0 0 860 360"' not in html
     assert "function layoutInfoGraphicPaths" in flow_script
@@ -263,7 +265,7 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;" in main_script
     assert "const shouldShowRefresh" not in main_script
     assert "hidden: true" not in chart_script
-    assert 'src="js/chart_factory.js?build=20260816b"' in html
+    assert 'src="js/chart_factory.js?build=20260816c"' in html
     assert "legendLabels.usePointStyle = true;" in chart_script
     assert html.count('data-dashboard-series=') == 4
     assert "function toggleDashboardChartSeries(datasetIndex)" in chart_script
@@ -289,8 +291,11 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert ".dashboard-settings-panel .app-panel-head-between" in design
     assert "flex: 0 0 2.75rem;" in design
     assert "function buildStackedBarStyle(color)" in chart_script
-    assert "hoverBackgroundColor: color" in chart_script
+    assert "hoverBackgroundColor: getChartHoverColor(color)" in chart_script
     assert "hoverBorderWidth: 0" in chart_script
+    assert 'id: "stackedBarHoverLift"' in chart_script
+    assert "element.y -= 2;" in chart_script
+    assert "element.base -= 2;" in chart_script
     assert chart_script.count("...buildStackedBarStyle(") == 6
     assert chart_script.count("hoverBackgroundColor: barColors") == 2
     assert "borderRadius: 0," in chart_script
