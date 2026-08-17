@@ -20,10 +20,6 @@ Les données restent sur votre installation.
 
 *Vue journalière : répartition de la production et de la consommation.*
 
-<img src="docs/phocos-history-month.webp" alt="Historique mensuel PiPhocos avec des données de démonstration" width="100%">
-
-*Vue mensuelle : synthèse du mois dès l'ouverture de l'écran.*
-
 Les captures utilisent un scénario fictif : elles ne contiennent aucune donnée
 d'installation réelle ni aucun identifiant matériel.
 
