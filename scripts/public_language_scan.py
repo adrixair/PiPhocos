@@ -19,7 +19,6 @@ PUBLIC_FILES = (
 )
 PUBLIC_DIRS = (
     ".github",
-    "doc",
     "docs",
 )
 TEXT_SUFFIXES = {".html", ".json", ".md", ".txt", ".yml", ".yaml"}

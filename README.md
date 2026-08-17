@@ -2,195 +2,109 @@
 
 # PiPhocos
 
-**Tableau de bord et enregistreur local pour Phocos Any-Grid sur Raspberry Pi.**
+**Tableau de bord local pour les onduleurs Phocos Any-Grid.**
 
-[![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-Compatible-C51A4A?style=for-the-badge&logo=raspberry-pi&logoColor=white)](https://www.raspberrypi.org/)
-[![Accessibilité](https://img.shields.io/badge/Accessibilit%C3%A9-WCAG_2.1_AA-4CAF50?style=for-the-badge&logo=w3c&logoColor=white)](https://www.w3.org/WAI/)
-[![Licence MIT](https://img.shields.io/badge/Licence-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-
-<br>
-
-<img src="doc/phocos-dashboard.webp" alt="Vue du tableau de bord PiPhocos avec des données de démonstration" width="90%">
-
-<br>
-
-PiPhocos collecte localement les données d'un onduleur Phocos Any-Grid,
-calcule les kWh produits, consommés, chargés ou injectés, puis les expose dans
-une application web locale. La priorité est la régularité de l'acquisition et
-la précision énergétique ; l'interface peut volontairement se rafraîchir moins
-souvent que le collecteur.
+PiPhocos enregistre la production solaire, la consommation, la batterie et les
+échanges avec le réseau, puis les présente dans une interface web en français.
+Les données restent sur votre installation.
 
 </div>
 
----
+## Aperçu
+
+<img src="docs/phocos-dashboard.webp" alt="Tableau de bord PiPhocos avec des données de démonstration" width="100%">
+
+*Tableau de bord : flux en direct et courbe des dernières données.*
+
+<img src="docs/phocos-history-day.webp" alt="Historique journalier PiPhocos avec des données de démonstration" width="100%">
+
+*Vue journalière : répartition de la production et de la consommation.*
+
+<img src="docs/phocos-history-month.webp" alt="Historique mensuel PiPhocos avec des données de démonstration" width="100%">
+
+*Vue mensuelle : synthèse du mois dès l'ouverture de l'écran.*
+
+Les captures utilisent un scénario fictif : elles ne contiennent aucune donnée
+d'installation réelle ni aucun identifiant matériel.
 
 ## Fonctionnalités
 
-- **Acquisition locale** : communication USB/RS232 avec le Phocos, sans cloud.
-- **Flux énergétique en direct** : solaire, maison, batterie et réseau avec sens
-  des échanges et puissances instantanées.
-- **Courbes interactives** : vue glissante sur 2 h, 4 h, 12 h ou 24 h avec
-  séries activables séparément.
-- **Historique énergétique** : bilans par jour, mois, année et depuis l'origine,
-  avec production, consommation, autonomie, facture et économies estimées.
-- **Priorité kWh** : boucle rapide centrée sur les puissances utiles aux calculs.
-- **Qualité des intervalles** : distinction entre données exactes, dérivées,
-  cachées, intégrées avec gap ou ignorées.
-- **Interface responsive et accessible** : tableau de bord en français, adapté
-  à l'ordinateur, à la tablette et au mobile, avec état de la dernière mesure.
-- **Exports CSV** : récupération des données pour analyse externe.
-- **PWA locale** : installation possible depuis un navigateur compatible.
-
----
-
-## Captures
-
-Toutes les valeurs visibles ci-dessous sont générées localement à partir d'un
-scénario solaire fictif. Elles ne proviennent d'aucune installation réelle et
-ne contiennent ni identifiant matériel ni donnée privée.
-
-<div align="center">
-  <table style="border-collapse: collapse; border: none;">
-    <tr style="border: none;">
-      <td width="50%" align="center" style="border: none;">
-        <img src="doc/phocos-chart.webp" alt="Courbe de puissance PiPhocos avec des données de démonstration" width="100%">
-        <br><i>Courbes de puissance sur 24 heures</i>
-      </td>
-      <td width="50%" align="center" style="border: none;">
-        <img src="doc/phocos-daily.webp" alt="Bilan journalier PiPhocos avec des données de démonstration" width="100%">
-        <br><i>Bilan énergétique journalier</i>
-      </td>
-    </tr>
-  </table>
-</div>
-
----
+- flux énergétiques en direct avec sens des échanges ;
+- courbes de puissance et historiques par jour, mois et année ;
+- calcul local des kWh produits, consommés, chargés et injectés ;
+- suivi de l'autonomie et estimations financières facultatives ;
+- export CSV, interface responsive et installation PWA ;
+- fonctionnement local, sans service cloud obligatoire.
 
 ## Installation rapide
 
-Prérequis :
+Prérequis : un Raspberry Pi avec Docker et Docker Compose, l'adaptateur
+USB/RS232 Phocos et un accès terminal.
 
-- un **Raspberry Pi** avec Docker et Docker Compose ;
-- l'adaptateur **USB / RS232 Phocos** connecté au Pi ;
-- un accès terminal au Raspberry Pi.
-
-### 1. Identifier l'adaptateur
+Copier l'URL proposée par le bouton **Code** de GitHub, puis :
 
 ```bash
-ls -l /dev/serial/by-id/
-```
-
-### 2. Préparer la configuration
-
-```bash
-git clone <url-du-depot-git>
+git clone <URL-du-dépôt>
 cd PiPhocos
 mkdir -p data
 cp templates/config.yml data/config.yml
 ```
 
-Modifier `data/config.yml`, notamment :
+Deux réglages sont indispensables dans `data/config.yml` :
 
-- `phocos.serial_port`
-- `device.start_date`
-- `prices.tariff` : `auto`, `flat`, `standard` ou `zen_weekend`.
-- `prices.price_per_grid_kwh`
-- `prices.revenue_per_fed_in_kwh`
-- `prices.zen_weekend` si votre contrat distingue les heures semaine et les
-  heures week-end/jours fériés.
-- `prices.standard` si vous voulez simuler le Tarif Bleu option Base.
-- `privacy.expose_device_identifiers` uniquement si vous acceptez d'afficher
-  les identifiants matériels dans l'API et l'interface.
-- `database.store_sample_raw_snapshot_json` doit rester `false` sauf diagnostic
-  local ponctuel ; les colonnes structurées suffisent au calcul kWh.
-- `database.raw_history_retention_hours` et
-  `database.energy_interval_retention_days` pilotent la compression des points
-  bruts et des intervalles kWh détaillés.
+```yaml
+device:
+  start_date: 2024-01-01
+phocos:
+  serial_port: /dev/serial/by-id/votre-adaptateur
+```
 
-### 3. Démarrer
+Le chemin stable de l'adaptateur s'obtient avec :
+
+```bash
+ls -l /dev/serial/by-id/
+```
+
+Démarrer ensuite PiPhocos :
 
 ```bash
 export PIPHOCOS_SERIAL_PORT=/dev/serial/by-id/votre-adaptateur
 docker compose up --build -d piphocos
 ```
 
-Par défaut, le service HTTP est publié sur `localhost` uniquement. Pour une
-exposition sur un réseau local de confiance :
+Le tableau de bord répond par défaut sur `http://localhost:5000`. Pour l'ouvrir
+sur un réseau local de confiance, définir `PIPHOCOS_HTTP_BIND` avec l'adresse
+LAN du Raspberry Pi avant de relancer Docker Compose.
+
+PiPhocos n'intègre pas d'authentification. Ne l'exposez pas directement sur
+Internet : utilisez un LAN de confiance, un VPN ou un proxy authentifié.
+
+Le guide complet couvre également Synology et les diagnostics courants :
+[installation](docs/installation.md).
+
+## Configuration facultative
+
+Le fichier fourni fonctionne avec des valeurs par défaut pour le stockage,
+l'acquisition et l'interface. Les tarifs d'électricité sont facultatifs et
+doivent être adaptés au contrat de chaque installation ; ils ne modifient pas
+les mesures physiques en kWh.
+
+- [Fonctionnement, précision et maintenance](docs/fonctionnement.md)
+- [Tarification facultative](docs/tarification.md)
+- [Modèle de configuration](templates/config.yml)
+
+## Diagnostic rapide
 
 ```bash
-export PIPHOCOS_HTTP_BIND=<ip-lan-du-raspberry-pi>
-docker compose up --build -d piphocos
+docker compose ps
+docker compose logs --tail=100 piphocos
+curl -fsS http://127.0.0.1:5000/api/live
+sqlite3 data/db.sqlite "PRAGMA integrity_check;"
 ```
 
-### 4. Ouvrir le tableau de bord
+## Crédits et licence
 
-- `http://localhost:5000` par défaut ;
-- `http://<ip-du-raspberry-pi>:5000` si `PIPHOCOS_HTTP_BIND` pointe vers l'IP LAN ;
-- une route locale ou un reverse proxy privé peut aussi exposer un nom local choisi
-  par l'administrateur.
+PiPhocos descend du projet **Sunalyzer** de **Boris Brock (VanKurt)**, adapté
+pour un usage Phocos Any-Grid local sur Raspberry Pi.
 
-PiPhocos n'intègre pas d'authentification. Ne pas l'exposer directement sur
-Internet ; utiliser un LAN de confiance, un VPN ou un proxy privé authentifié.
-
----
-
-## Précision et performance
-
-PiPhocos se concentre sur les mesures qui changent tout le temps : watts maison,
-production solaire, charge/décharge batterie et import/export réseau. Les
-commandes Phocos secondaires sont lues plus lentement pour ne pas ralentir la
-boucle d'acquisition.
-
-L'interface peut se rafraîchir moins vite que le collecteur. C'est volontaire :
-la priorité est d'enregistrer les watts à une cadence stable pour réduire
-l'écart kWh avec les compteurs ou factures.
-
-Sur l'installation locale validée, le réglage retenu est `QPGS0` toutes les
-1 seconde et `QPIGS` toutes les 30 secondes. La cadence 0,5 seconde reste un
-stress test : elle provoque trop de retards sur le lien série 2400 bauds.
-
-Le stockage est compressé par niveaux : points bruts récents pour le direct,
-buckets de 10 minutes pour les graphes longs, intervalles kWh détaillés pour le
-recalcul récent, puis résumés journaliers, mensuels et annuels conservés durablement.
-Les intervalles anciens ne sont purgés qu'après création des résumés d'énergie et
-de qualité, afin que les rapprochements avec les factures restent disponibles.
-
-Documentation technique :
-
-- [Performance d'acquisition](docs/performance-acquisition.md)
-- [Précision énergétique et réconciliation kWh](docs/energy-accuracy.md)
-- [Tarifs, factures et API compteur](docs/tarifs-facturation-api.md)
-- [Compression et rétention des données](docs/storage-compression.md)
-- [Plan de test performance](docs/operations/performance-test-plan.md)
-
----
-
-## Ressources incluses
-
-- [Guide Raspberry Pi](doc/install_raspberrypi.md)
-- [Guide Synology NAS](doc/install_synology.md)
-- [Modèle de configuration](templates/config.yml)
-- [Rapport performance acquisition](scripts/acquisition_report.py)
-- [Benchmark stockage local](scripts/storage_benchmark.py)
-- [Rapport compression SQLite](scripts/compression_report.py)
-- [Purge contrôlée des intervalles kWh](scripts/prune_energy_intervals.py)
-- [Benchmark série Phocos](scripts/phocos_serial_benchmark.py)
-- [Reconstruction des résumés de qualité](scripts/rebuild_quality_summaries.py)
-- [Scan anonymisation](scripts/privacy_scan.py)
-- [Scan langue publique](scripts/public_language_scan.py)
-- Documentation protocole : utiliser la documentation officielle Phocos adaptée
-  à votre modèle d'onduleur.
-
----
-
-## Crédits
-
-Ce projet descend du projet **Sunalyzer** de **Boris Brock (VanKurt)**. La base
-initiale a été adaptée, réduite et optimisée pour un usage Phocos Any-Grid local
-sur Raspberry Pi.
-
----
-
-<div align="center">
-  Publié sous <a href="LICENSE">licence MIT</a>
-</div>
+Publié sous [licence MIT](LICENSE).

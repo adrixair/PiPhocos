@@ -33,8 +33,8 @@ def test_privacy_scan_ignores_vendored_site_lib(tmp_path):
 
 
 def test_privacy_scan_detects_public_image_metadata(tmp_path):
-    (tmp_path / "doc").mkdir()
-    (tmp_path / "doc" / "screen.webp").write_bytes(
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "screen.webp").write_bytes(
         b"RIFF....WEBP XMP Pixelmator Screenshot /Users/adrien/Desktop"
     )
 

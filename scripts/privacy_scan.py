@@ -13,7 +13,6 @@ from pathlib import Path
 DEFAULT_INCLUDE_DIRS = (
     ".github",
     "backend",
-    "doc",
     "docs",
     "scripts",
     "site",
