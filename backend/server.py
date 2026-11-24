@@ -42,6 +42,8 @@ from phocos_store import (
     get_reconciliation_interval_rows,
 )
 from tempo_edf import TempoApiClient, build_pricing_context
+from storage_status import get_storage_status
+from storage_guard import configured_min_free_bytes, get_storage_pressure
 import version
 
 
@@ -138,6 +140,8 @@ STALE_LIVE_TEXT_FIELDS = {
 
 def _ensure_server_schema(db):
     global _SCHEMA_READY
+    if getattr(db, "read_only", False):
+        return
     if _SCHEMA_READY:
         return
     with _SCHEMA_LOCK:
@@ -147,16 +151,31 @@ def _ensure_server_schema(db):
         _SCHEMA_READY = True
 
 
+def _recording_storage_pressure():
+    return get_storage_pressure(
+        os.path.dirname(str(DB_PATH)),
+        min_free_bytes=configured_min_free_bytes(
+            config.config_data if config is not None else {}
+        ),
+    )
+
+
+def _new_server_db():
+    if not _recording_storage_pressure()["write_allowed"]:
+        return Database(str(DB_PATH), read_only=True)
+    return Database(str(DB_PATH))
+
+
 def _open_db():
     if has_app_context():
         db = getattr(g, "_db", None)
         if db is None:
-            db = Database(str(DB_PATH))
+            db = _new_server_db()
             _ensure_server_schema(db)
             g._db = db
         return db
 
-    db = Database(str(DB_PATH))
+    db = _new_server_db()
     _ensure_server_schema(db)
     return db
 
@@ -407,17 +426,36 @@ def _history_sample_bounds(db, *, since_iso=None, local_day=None, table="history
         params.append(local_day)
 
     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
-    bounds = db.fetchone(
-        f"""
+    aggregate_select = """
+        COUNT(*) AS sample_count,
+        MIN(recorded_at) AS first_recorded_at,
+        MAX(recorded_at) AS last_recorded_at
+    """
+    if table == "history_samples":
+        # Aggregate each source before UNION ALL. Aggregating the wide history
+        # view can make SQLite scan every recent sample for an archived day,
+        # instead of reading the covering day/timestamp indexes.
+        query = f"""
         SELECT
-            COUNT(*) AS sample_count,
-            MIN(recorded_at) AS first_recorded_at,
-            MAX(recorded_at) AS last_recorded_at
-        FROM {table}
-        {where_clause}
-        """,
-        params,
-    )
+            COALESCE(SUM(sample_count), 0) AS sample_count,
+            MIN(first_recorded_at) AS first_recorded_at,
+            MAX(last_recorded_at) AS last_recorded_at
+        FROM (
+            SELECT {aggregate_select}
+            FROM compressed_samples_10m
+            {where_clause}
+            UNION ALL
+            SELECT {aggregate_select}
+            FROM samples
+            {where_clause}
+        )
+        """
+        bounds = db.fetchone(query, [*params, *params])
+    else:
+        bounds = db.fetchone(
+            f"SELECT {aggregate_select} FROM {table} {where_clause}",
+            params,
+        )
     return bounds, where_clause, params
 
 
@@ -1046,7 +1084,7 @@ def _overview_payload(*, compact=False, db=None, current=None):
         include_capabilities=not compact,
     )
     if not current:
-        return {"state": "nodata"}
+        return {"state": "nodata", "recording": _recording_storage_pressure()}
 
     payload = _dashboard_live_payload_from_current(
         current,
@@ -1080,8 +1118,9 @@ def _overview_payload(*, compact=False, db=None, current=None):
 
 
 def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
+    recording = _recording_storage_pressure()
     if not current:
-        return {"state": "nodata"}
+        return {"state": "nodata", "recording": recording}
 
     snapshot = current["snapshot"]
     semantics = current["semantics"]
@@ -1104,6 +1143,7 @@ def _dashboard_live_payload_from_current(current, *, include_capabilities=True):
         "public_url": config.config_data["server"]["public_url"],
         "current_data_stale": stale,
         "live_state": "offline" if stale else "live",
+        "recording": recording,
         "device": {
             "other_units_connected": snapshot.get("other_units_connected"),
             "other_units_connected_code": snapshot.get("other_units_connected_code"),
@@ -2468,6 +2508,18 @@ def api_statistics():
     return jsonify(_statistics_payload(_open_db()))
 
 
+@app.route("/api/storage", methods=["GET"])
+def api_storage():
+    payload = get_storage_status(
+        DB_PATH,
+        DATA_DIR,
+        config.config_data if config is not None else {},
+    )
+    response = jsonify(payload)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.route("/api/chart/live", methods=["GET"])
 def api_chart_live():
     try:
@@ -2691,8 +2743,6 @@ def main():
 
     os.makedirs(DATA_DIR, exist_ok=True)
     logging.basicConfig(
-        filename=str(SERVER_LOG_PATH),
-        filemode="w",
         format="%(asctime)s %(levelname)-8s %(message)s",
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -2700,6 +2750,16 @@ def main():
     logging.info("Starting PiPhocos server version %s", version.get_version())
     logging.info("Server: reading backend configuration from %s", CONFIG_PATH)
     config = Config(str(CONFIG_PATH))
+    # Keep serving existing history even if opening a log on disk fails.
+    if _recording_storage_pressure()["write_allowed"]:
+        try:
+            handler = logging.FileHandler(str(SERVER_LOG_PATH), mode="a")
+            handler.setFormatter(logging.Formatter(
+                "%(asctime)s %(levelname)-8s %(message)s", "%Y-%m-%d %H:%M:%S"
+            ))
+            logging.getLogger().addHandler(handler)
+        except OSError:
+            logging.warning("Server: file logging unavailable; using standard error")
     tempo_client = TempoApiClient(config)
     logging.getLogger().setLevel(config.log_level)
     db = _open_db()

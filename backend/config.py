@@ -42,6 +42,7 @@ DEFAULT_CONFIG = {
         "expose_device_identifiers": False,
     },
     "database": {
+        "min_free_space_mb": 512,
         "wal_truncate_threshold_mb": 96,
         "store_sample_raw_snapshot_json": False,
         "raw_history_retention_hours": 6,

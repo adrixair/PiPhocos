@@ -264,6 +264,83 @@ body {
   border-color: var(--app-border-accent-soft);
 }
 
+.app-view-status.app-view-status-compact {
+  align-items: center;
+  font-size: 0.88rem;
+  font-weight: 500;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  min-height: 2.4rem;
+  padding: 0.55rem 0.75rem;
+  position: static;
+  width: auto;
+}
+
+.app-view-status.visually-hidden::before {
+  animation: none;
+  content: none;
+}
+
+.storage-card {
+  max-width: 44rem;
+}
+
+.storage-free-row {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  justify-content: space-between;
+}
+
+.storage-free-value {
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.storage-total {
+  color: var(--app-text-soft);
+  font-size: 0.88rem;
+  font-weight: 400;
+}
+
+.storage-usage-bar {
+  background: var(--app-skeleton-base);
+  border-radius: 999px;
+  height: 0.3rem;
+  margin: 0.9rem 0 1.25rem;
+  overflow: hidden;
+}
+
+.storage-usage-bar > span {
+  background: var(--app-accent);
+  display: block;
+  height: 100%;
+  width: 0;
+}
+
+.storage-details {
+  align-items: baseline;
+  display: grid;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  gap: 0.75rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin: 0;
+}
+
+.storage-details dt {
+  color: var(--app-text-soft);
+  font-weight: 400;
+}
+
+.storage-details dd {
+  font-weight: 600;
+  margin: 0;
+  text-align: right;
+}
+
 .app-panel {
   background: #ffffff;
   border: 1px solid var(--app-border);
@@ -687,18 +764,18 @@ body {
 
 .chart-shell-donut.is-loading::before {
   background: transparent;
-  border: 1.15rem solid var(--app-skeleton-base);
+  border: var(--donut-loading-thickness, 1.95rem) solid var(--app-skeleton-base);
   border-right-color: rgba(243, 106, 16, 0.28);
   border-top-color: rgba(243, 106, 16, 0.28);
   border-radius: 50%;
   bottom: auto;
   clip-path: none;
-  height: 9.25rem;
-  left: 50%;
+  height: var(--donut-loading-size, 13rem);
+  left: var(--donut-loading-x, 50%);
   right: auto;
-  top: 50%;
+  top: var(--donut-loading-y, 50%);
   transform: translate(-50%, -50%);
-  width: 9.25rem;
+  width: var(--donut-loading-size, 13rem);
 }
 
 .power-flow-panel .app-panel-body {
@@ -1556,6 +1633,19 @@ body {
 
   .dashboard-metrics tr {
     grid-template-columns: 1.65rem minmax(0, 1fr) minmax(4.25rem, max-content) max-content;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-mode-day .history-toolbar-controls,
+  .history-mode-today .history-toolbar-controls {
+    gap: 0.25rem;
+    grid-template-columns: 2.35rem 3.5rem minmax(0, 1fr) 2.4rem 2.35rem;
+  }
+
+  .history-mode-day .history-toolbar-controls .app-select,
+  .history-mode-today .history-toolbar-controls .app-select {
+    padding-inline: 0.4rem;
   }
 }
 

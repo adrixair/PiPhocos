@@ -9,6 +9,7 @@ let translations = [
     ["sidebar_headline_overview", "Vue d'ensemble"],
     ["sidebar_dashboard", "Tableau de bord"],
     ["sidebar_statistics", "Statistiques"],
+    ["sidebar_storage", "Stockage"],
     ["sidebar_headline_history", "Historique"],
     ["sidebar_by_day", "Par jour"],
     ["sidebar_by_month", "Par mois"],
@@ -18,6 +19,7 @@ let translations = [
     // Titres
     ["headline_dashboard", "Tableau de bord"],
     ["headline_statistics", "Statistiques"],
+    ["headline_storage", "Stockage"],
 
     // Statistiques
     ["stats_card_highest_prod", "Production maximale"],
@@ -444,6 +446,13 @@ let genericStrings = {
     loading_history: ["Chargement de la période sélectionnée..."],
     statistics_load_error: ["Impossible de charger les statistiques."],
     history_load_error: ["Impossible de charger cette période."],
+    history_load_timeout: ["Le chargement dépasse 30 secondes. Réessayez en sélectionnant à nouveau la période."],
+    loading_storage: ["Actualisation du stockage..."],
+    storage_load_error: ["Le stockage est momentanément indisponible."],
+    storage_load_timeout: ["Le stockage est momentanément indisponible."],
+    storage_partial: ["Certaines informations sont indisponibles."],
+    recording_paused_space: ["Enregistrement en pause : espace insuffisant."],
+    recording_paused_storage: ["Enregistrement en pause : stockage indisponible."],
     boolean_yes: ["Oui"],
     boolean_no: ["Non"],
     none: ["Aucune"],

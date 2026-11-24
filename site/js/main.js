@@ -130,6 +130,7 @@ let gInfoTooltipShowTimer = null;
 let gInfoTooltipHideTimer = null;
 let gLastTelemetryRecordedAt = null;
 let gTelemetryConnectionHealthy = null;
+let gRecordingStorageState = null;
 let gInitialViewApplied = false;
 let gCurrentView = "dashboard";
 let gDashboardOverviewRequest = null;
@@ -153,11 +154,19 @@ let gLastHistoryHighResRaw = null;
 let gDateBoundsRequest = null;
 let gDateSelectorsInitialized = false;
 let gDateBoundsLoaded = false;
+let gStorageRequest = null;
+let gStorageHasLoadedOnce = false;
+let gLastStorageRefreshAt = 0;
+const gHistoryDayCache = new Map();
 
 const DATA_REFRESH_INTERVAL_MS = 5 * 1000;
 const DASHBOARD_GRAPH_REFRESH_THROTTLE_MS = 10 * 1000;
 const HISTORY_LIVE_REFRESH_MS = DATA_REFRESH_INTERVAL_MS;
 const HISTORY_LIVE_REFRESH_THROTTLE_MS = 15 * 1000;
+const REQUEST_TIMEOUT_MS = 30 * 1000;
+const HISTORY_DAY_CACHE_LIMIT = 12;
+const HISTORY_DAY_CACHE_TTL_MS = 5 * 60 * 1000;
+const STORAGE_REFRESH_INTERVAL_MS = 60 * 1000;
 const BACKGROUND_TELEMETRY_REFRESH_MS = 20 * 1000;
 const FLOATING_INFO_TOOLTIP_ID = "floating-info-tooltip";
 const INFO_TOOLTIP_SHOW_DELAY_MS = 0;
@@ -278,6 +287,8 @@ function normalizeViewState(candidate) {
     const view = (candidate?.view || "").toLowerCase();
     if (view === "statistics")
         return { view: "statistics" };
+    if (view === "storage")
+        return { view: "storage" };
     if (view === "history")
         return {
             view: "history",
@@ -302,6 +313,8 @@ function getCurrentViewState() {
     switch (gCurrentView) {
         case "statistics":
             return { view: "statistics" };
+        case "storage":
+            return { view: "storage" };
         case "history":
             return {
                 view: "history",
@@ -375,6 +388,9 @@ function applyInitialViewState() {
         case "statistics":
             showViewStatistics({ persist: false });
             break;
+        case "storage":
+            showViewStorage({ persist: false });
+            break;
         case "history":
             showViewHistory(state.history, { persist: false, initialDate: state.date });
             break;
@@ -401,6 +417,7 @@ window.addEventListener('DOMContentLoaded', event => {
     setInterval(updateCurrentStats, DATA_REFRESH_INTERVAL_MS);
     setInterval(refreshTelemetryStatus, DATA_REFRESH_INTERVAL_MS);
     setInterval(refreshLiveHistoryStats, HISTORY_LIVE_REFRESH_MS);
+    setInterval(refreshStorageIfVisible, STORAGE_REFRESH_INTERVAL_MS);
     initSelectionBoxes();
     setVersion();
     setName();
@@ -421,6 +438,7 @@ document.addEventListener("visibilitychange", () => {
         return;
     }
     refreshLiveHistoryStats();
+    refreshStorageIfVisible();
 });
 
 function setName() {
@@ -474,6 +492,10 @@ function renderTelemetryDetail() {
     const element = document.getElementById("telemetry_detail");
     if (element == null)
         return;
+    if (gRecordingStorageState?.write_allowed === false) {
+        element.textContent = recordingPauseMessage(gRecordingStorageState);
+        return;
+    }
     if (gTelemetryConnectionHealthy == null && gLastTelemetryRecordedAt == null) {
         element.textContent = "";
         return;
@@ -493,6 +515,7 @@ function renderTelemetryStatus() {
 }
 
 function applyTelemetryStatusFromOverview(stats) {
+    gRecordingStorageState = stats?.recording || null;
     gTelemetryConnectionHealthy = stats != null && stats["current_data_stale"] !== true;
 
     if (stats != null && stats["recorded_at"]) {
@@ -900,6 +923,8 @@ function setStatisticsLoadingState(loading) {
 function setHistoryLoadingState(loading) {
     setTextSkeletonState(HISTORY_LOADING_ELEMENT_IDS, loading);
     setChartShellLoadingState(HISTORY_CHART_SHELL_IDS, loading);
+    if (loading && typeof prepareHistoryDonutLoadingCharts === "function")
+        prepareHistoryDonutLoadingCharts();
 }
 
 function getInitialHistorySelectionKey(mode, initialDate = "") {
@@ -1593,9 +1618,50 @@ async function ensureDateBoundsLoaded() {
 }
 // Async function to get the important dates
 async function fetchDatesJSON() {
-    const response = await fetch(gBaseUrl + 'api/date-bounds');
-    const stats = await response.json();
-    return stats;
+    return fetchJSONWithTimeout(gBaseUrl + 'api/date-bounds');
+}
+
+async function fetchJSONWithTimeout(url, options = {}) {
+    const { signal, timeoutMs = REQUEST_TIMEOUT_MS, ...requestOptions } = options;
+    const controller = new AbortController();
+    const cancelRequest = () => controller.abort();
+    if (signal?.aborted) {
+        const error = new Error("Request cancelled");
+        error.name = "AbortError";
+        throw error;
+    }
+    signal?.addEventListener("abort", cancelRequest, { once: true });
+    let timeoutId;
+    let timedOut = false;
+    const timeout = new Promise((resolve, reject) => {
+        timeoutId = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+            const error = new Error("Request timed out");
+            error.name = "TimeoutError";
+            reject(error);
+        }, timeoutMs);
+    });
+    try {
+        return await Promise.race([
+            fetch(url, { ...requestOptions, signal: controller.signal }).then(response => {
+                if (!response.ok)
+                    throw new Error("Could not load data");
+                return response.json();
+            }),
+            timeout,
+        ]);
+    } catch (error) {
+        if (timedOut) {
+            const timeoutError = new Error("Request timed out");
+            timeoutError.name = "TimeoutError";
+            throw timeoutError;
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener("abort", cancelRequest);
+    }
 }
 
 function setViewBusyState(viewId, loading) {
@@ -1612,7 +1678,7 @@ function setViewStatus(elementId, state, message) {
     if (element == null)
         return;
 
-    if (message == null || message === "") {
+    if (state === "loading" || message == null || message === "") {
         element.textContent = "";
         element.removeAttribute("data-state");
         element.classList.remove("visually-hidden");
@@ -1622,7 +1688,7 @@ function setViewStatus(elementId, state, message) {
 
     element.textContent = message;
     element.setAttribute("data-state", state || "info");
-    element.classList.toggle("visually-hidden", state === "loading");
+    element.classList.remove("visually-hidden");
     setElementVisible(elementId, true);
 }
 
@@ -1847,7 +1913,8 @@ function updateHistoryStats(options = {}) {
 
             gLastHistoryHighResSelectionKey = null;
             gLastHistoryHighResRaw = null;
-            setViewStatus("history_status", "error", getGenericString("history_load_error"));
+            setViewStatus("history_status", "error", getGenericString(
+                error?.name === "TimeoutError" ? "history_load_timeout" : "history_load_error"));
             setElementVisible("row_error_banner", false);
             setElementVisible("row_history_data", false);
             if (updateHighRes)
@@ -1983,10 +2050,24 @@ async function fetchHistoryStatsJSON(options = {}) {
     }
     if (!includeHighRes)
         query += "&include_high_res=0";
-    const response = await fetch(gBaseUrl + query, { signal });
-    if (!response.ok)
-        throw new Error("Could not load history period");
-    const stats = await response.json();
+    const dayKey = (gCurHistory === histories.DAY || gCurHistory === histories.TODAY)
+        ? getPeriodKeyFromSelectors(gCurHistory) : null;
+    const isClosedDay = dayKey != null && dayKey < getPeriodKeyFromDate(histories.DAY, new Date());
+    if (isClosedDay) {
+        const cached = gHistoryDayCache.get(query);
+        if (cached != null && Date.now() - cached.savedAt < HISTORY_DAY_CACHE_TTL_MS) {
+            gHistoryDayCache.delete(query);
+            gHistoryDayCache.set(query, cached);
+            return cached.payload;
+        }
+        gHistoryDayCache.delete(query);
+    }
+    const stats = await fetchJSONWithTimeout(gBaseUrl + query, { signal });
+    if (isClosedDay && stats?.state === "ok") {
+        gHistoryDayCache.set(query, { savedAt: Date.now(), payload: stats });
+        while (gHistoryDayCache.size > HISTORY_DAY_CACHE_LIMIT)
+            gHistoryDayCache.delete(gHistoryDayCache.keys().next().value);
+    }
     return stats;
 }
 
@@ -2009,10 +2090,7 @@ async function fetchHistoryDetailsJSON(options = {}) {
             query += "year";
             break;
     }
-    const response = await fetch(gBaseUrl + query, { signal });
-    if (!response.ok)
-        throw new Error("Could not load history details");
-    const payload = await response.json();
+    const payload = await fetchJSONWithTimeout(gBaseUrl + query, { signal });
     return Array.isArray(payload?.items) ? payload.items : [];
 }
 
@@ -2073,6 +2151,104 @@ async function fetchStatisticsJSON() {
     return stats;
 }
 
+function formatStorageBytes(value) {
+    if (value == null || !Number.isFinite(Number(value)) || Number(value) < 0)
+        return "—";
+    const units = ["o", "Ko", "Mo", "Go", "To"];
+    const bytes = Number(value);
+    const unitIndex = bytes > 0 ? Math.max(0, Math.min(Math.floor(Math.log(bytes) / Math.log(1000)), units.length - 1)) : 0;
+    return numFormat(bytes / Math.pow(1000, unitIndex), unitIndex === 0 ? 0 : 1) + " " + units[unitIndex];
+}
+
+function setStorageText(id, text) {
+    const element = document.getElementById(id);
+    if (element != null)
+        element.textContent = text;
+}
+
+function recordingPauseMessage(recording) {
+    return getGenericString(recording?.reason === "low_disk_space"
+        ? "recording_paused_space" : "recording_paused_storage");
+}
+
+function renderStorage(payload) {
+    const disk = payload.disk || {};
+    const database = payload.database || {};
+    const diskPercent = Number(disk.total_bytes) > 0 && disk.free_bytes != null
+        ? Math.min(100, Math.max(0, (Number(disk.total_bytes) - Number(disk.free_bytes)) / Number(disk.total_bytes) * 100)) : null;
+    setStorageText("storage_disk_free", formatStorageBytes(disk.free_bytes));
+    setStorageText("storage_disk_total", formatStorageBytes(disk.total_bytes));
+    const meter = document.getElementById("storage_disk_meter");
+    if (meter != null) {
+        meter.setAttribute("aria-valuenow", diskPercent == null ? "0" : diskPercent.toFixed(1));
+        meter.setAttribute("aria-valuetext", diskPercent == null ? "Indisponible" : numFormat(diskPercent, 1) + " % utilisés");
+    }
+    const fill = document.getElementById("storage_disk_fill");
+    if (fill != null)
+        fill.style.width = (diskPercent || 0) + "%";
+    setStorageText("storage_database_size", formatStorageBytes(database.total_bytes));
+    gRecordingStorageState = payload.recording || null;
+    renderTelemetryStatus();
+}
+
+function setStorageLoadingState(loading) {
+    ["storage_disk_free", "storage_disk_total", "storage_database_size"].forEach(id => {
+        document.getElementById(id)?.classList.toggle("app-skeleton-text", loading);
+    });
+}
+
+function refreshStorageIfVisible() {
+    if (gCurrentView !== "storage" || document.hidden
+        || Date.now() - gLastStorageRefreshAt < STORAGE_REFRESH_INTERVAL_MS)
+        return;
+    updateStorage();
+}
+
+function updateStorage() {
+    if (gStorageRequest != null)
+        return gStorageRequest;
+    gLastStorageRefreshAt = Date.now();
+    setViewBusyState("view_storage", true);
+    setStorageLoadingState(!gStorageHasLoadedOnce);
+    setViewStatus("storage_status", null, "");
+    gStorageRequest = fetchJSONWithTimeout(gBaseUrl + "api/storage")
+        .then(payload => {
+            if (payload?.state !== "ok" && payload?.state !== "partial")
+                throw new Error("Could not load storage");
+            renderStorage(payload);
+            gStorageHasLoadedOnce = true;
+            const paused = payload.recording?.write_allowed === false;
+            setViewStatus("storage_status", paused || payload.state === "partial" ? "info" : null,
+                paused ? recordingPauseMessage(payload.recording)
+                    : payload.state === "partial" ? getGenericString("storage_partial") : "");
+        })
+        .catch(error => {
+            const message = getGenericString(error?.name === "TimeoutError" ? "storage_load_timeout" : "storage_load_error");
+            setViewStatus("storage_status", "error", message);
+        })
+        .finally(() => {
+            setViewBusyState("view_storage", false);
+            setStorageLoadingState(false);
+            gStorageRequest = null;
+        });
+    return gStorageRequest;
+}
+
+function showViewStorage(options = {}) {
+    setElementVisible("view_dashboard", false);
+    setElementVisible("view_statistics", false);
+    setElementVisible("view_history", false);
+    setElementVisible("view_storage", true);
+    setInfoGraphicEnabled(false);
+    gCurrentView = "storage";
+    gDashboardVisible = false;
+    setActiveSidebarLink("storage");
+    hideFloatingInfoTooltip(true);
+    updateStorage();
+    if (options.persist !== false)
+        persistCurrentViewState();
+}
+
 function refreshLocalizedContent() {
     updateTime();
     configureDashboardLayout();
@@ -2099,6 +2275,9 @@ function refreshLocalizedContent() {
     else if (document.getElementById("view_history").style.display != "none") {
         updateHistoryStats();
     }
+    else if (gCurrentView === "storage") {
+        updateStorage();
+    }
     queueVisibleChartResize();
 }
 
@@ -2108,6 +2287,7 @@ function showViewDashboard(options = {}) {
     setElementVisible("view_dashboard", true);
     setElementVisible("view_statistics", false);
     setElementVisible("view_history", false);
+    setElementVisible("view_storage", false);
     setInfoGraphicEnabled(true);
     gCurrentView = "dashboard";
     gDashboardVisible = true;
@@ -2123,6 +2303,7 @@ function showViewStatistics(options = {}) {
     setElementVisible("view_dashboard", false);
     setElementVisible("view_statistics", true);
     setElementVisible("view_history", false);
+    setElementVisible("view_storage", false);
     setInfoGraphicEnabled(false);
     gCurrentView = "statistics";
     gDashboardVisible = false;
@@ -2138,6 +2319,7 @@ function showViewHistory(mode, options = {}) {
     setElementVisible("view_dashboard", false);
     setElementVisible("view_statistics", false);
     setElementVisible("view_history", true);
+    setElementVisible("view_storage", false);
     setInfoGraphicEnabled(false);
     gCurrentView = "history";
     gDashboardVisible = false;
@@ -2239,12 +2421,13 @@ function showViewHistory(mode, options = {}) {
                 setElementVisible("row_history_data", false);
             }
         })
-        .catch(() => {
+        .catch(error => {
             if (gCurHistory !== mode || !isHistoryViewVisible())
                 return;
             setHistoryLoadingState(false);
             setViewBusyState("view_history", false);
-            setViewStatus("history_status", "error", getGenericString("history_load_error"));
+            setViewStatus("history_status", "error", getGenericString(
+                error?.name === "TimeoutError" ? "history_load_timeout" : "history_load_error"));
         });
     queueVisibleChartResize();
 }

@@ -20,8 +20,8 @@
     <link href="css/styles.css?build=20260404b" rel="stylesheet" />
     <link href="lib/bootstrap.min.css?build=20260404b" rel="stylesheet" />
     <link href="lib/fontawesome/css/all.min.css?build=20260404b" rel="stylesheet" />
-    <link href="css/custom.css?build=20260815d" rel="stylesheet" />
-    <link href="css/newdesign.css?build=20260816b" rel="stylesheet" />
+    <link href="css/custom.css?build=20261118c" rel="stylesheet" />
+    <link href="css/newdesign.css?build=20261118d" rel="stylesheet" />
 </head>
 
 <body class="sb-nav-fixed app-shell">
@@ -76,6 +76,12 @@
                             href="#" onclick="showViewHistory(histories.ALL); collapseSidebar(); return false;">
                             <div class="sb-nav-link-icon"><i class="fas fa-chart-line"></i></div>
                             <div id="sidebar_all_time">Total</div>
+                        </a>
+                        <div class="sb-sidenav-menu-heading">Système</div>
+                        <a class="nav-link app-nav-link" data-nav-target="storage"
+                            href="#" onclick="showViewStorage(); collapseSidebar(); return false;">
+                            <div class="sb-nav-link-icon"><i class="fas fa-hard-drive"></i></div>
+                            <div id="sidebar_storage">Stockage</div>
                         </a>
 
                     </div>
@@ -409,7 +415,7 @@
                         <div>
                             <h1 class="app-view-title" id="headline_history">...</h1>
                             <p class="app-view-subtitle">Consulter la production, la consommation et leur répartition sur la période sélectionnée.</p>
-                            <div class="app-view-status" id="history_status" data-default-display="inline-flex"
+                            <div class="app-view-status app-view-status-compact" id="history_status" data-default-display="inline-flex"
                                 style="display: none;" role="status" aria-live="polite"></div>
                         </div>
                     </div>
@@ -667,6 +673,35 @@
                     </div>
                 </div>
 
+                <div class="container-fluid px-4 app-view" id="view_storage" data-default-display="block"
+                    style="display: none;">
+                    <div class="app-view-head">
+                        <div>
+                            <h1 class="app-view-title" id="headline_storage">Stockage</h1>
+                            <div class="app-view-status app-view-status-compact" id="storage_status"
+                                data-default-display="inline-flex" style="display: none;" role="status" aria-live="polite"></div>
+                        </div>
+                    </div>
+
+                    <section class="app-panel storage-card">
+                        <div class="app-panel-body">
+                            <div class="storage-free-row">
+                                <span>Espace libre</span>
+                                <span class="storage-free-value"><span id="storage_disk_free">—</span>
+                                    <span class="storage-total">sur <span id="storage_disk_total">—</span></span>
+                                </span>
+                            </div>
+                            <div class="storage-usage-bar" id="storage_disk_meter" role="meter"
+                                aria-label="Espace disque utilisé" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <span id="storage_disk_fill"></span>
+                            </div>
+                            <dl class="storage-details">
+                                <dt>Données</dt><dd id="storage_database_size">—</dd>
+                            </dl>
+                        </div>
+                    </section>
+                </div>
+
             </main>
         </div>
     </div>
@@ -674,14 +709,14 @@
     <script src="lib/bootstrap.bundle.min.js?build=20260404b"></script>
     <script src="js/version.js?build=20260404b"></script>
     <script src="js/sidebar.js?build=20260405b"></script>
-    <script src="js/localization.js?build=20260815n"></script>
+    <script src="js/localization.js?build=20261118c"></script>
     <script src="lib/hammer.min.js?build=20260404b"></script>
     <script src="lib/chart.min.js?build=20260404b" crossorigin="anonymous"></script>
     <script src="lib/chartjs-plugin-labels.min.js?build=20260404b"></script>
     <script src="lib/chartjs-plugin-zoom.min.js?build=20260404b"></script>
-    <script src="js/chart_factory.js?build=20260816c"></script>
+    <script src="js/chart_factory.js?build=20261118d"></script>
     <script src="js/info_graphic.js?build=20260816c"></script>
-    <script src="js/main.js?build=20260815p"></script>
+    <script src="js/main.js?build=20261118e"></script>
 </body>
 
 </html>

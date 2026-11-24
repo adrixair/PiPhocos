@@ -14,6 +14,7 @@ DEFAULT_INCLUDE_DIRS = (
     ".github",
     "backend",
     "docs",
+    "pytest",
     "scripts",
     "site",
     "templates",
@@ -36,6 +37,7 @@ TEXT_SUFFIXES = {
     ".sh",
     ".svg",
     ".txt",
+    ".webmanifest",
     ".yml",
     ".yaml",
 }
@@ -136,7 +138,7 @@ def iter_public_text_files(root: Path):
     roots = [root / name for name in DEFAULT_INCLUDE_DIRS]
     explicit = [root / name for name in DEFAULT_INCLUDE_FILES]
     for candidate in explicit:
-        if candidate.exists() and candidate.is_file() and candidate.suffix in TEXT_SUFFIXES:
+        if candidate.is_file():
             yield candidate
 
     for directory in roots:

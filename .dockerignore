@@ -2,5 +2,7 @@
 .venv
 __pycache__
 *.pyc
+**/._*
+**/.DS_Store
 data
 piphocos-latest.tar.gz

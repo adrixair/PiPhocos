@@ -17,6 +17,7 @@ RAW_HISTORY_RETENTION_HOURS = 24
 ARCHIVED_SAMPLE_BUCKET_MINUTES = 10
 DEFAULT_ENERGY_INTERVAL_RETENTION_DAYS = 45
 DEFAULT_ENERGY_INTERVAL_PRUNE_MAX_DAYS = 14
+INCREMENTAL_ROLLUP_STATE_PREFIX = "incremental_energy_day:"
 
 HISTORY_SAMPLE_COLUMNS = (
     "recorded_at",
@@ -457,6 +458,12 @@ def _refresh_day_quality_summary(db, local_day: str):
         """,
         [local_day],
     )
+    if _day_rollup_cursor(db, local_day) is not None:
+        invalidate_day_rollup_cursor(db, local_day)
+    _write_day_quality_summary_rows(db, local_day, rows)
+
+
+def _write_day_quality_summary_rows(db, local_day, rows):
     db.execute(
         f"DELETE FROM {QUALITY_SUMMARY_DAYS_TABLE} WHERE local_day = ?",
         [local_day],
@@ -554,12 +561,14 @@ def _refresh_day_summary(
     if not local_day:
         return
 
+    invalidate_day_rollup_cursor(db, local_day)
     aggregate = _aggregate_day_summary(db, local_day)
     sample_stats = _history_sample_stats_for_day(db, local_day)
     interval_count = int(aggregate.get("interval_count") or 0)
     sample_count = int(sample_stats.get("sample_count") or 0)
     if interval_count <= 0 and sample_count <= 0:
         _delete_summary_row(db, SUMMARY_ROLLUP_TABLES["day"], "local_day", local_day)
+        _clear_day_rollup_cursor(db, local_day)
         return
 
     row = {
@@ -581,6 +590,148 @@ def _refresh_day_summary(
     }
     _write_summary_row(db, SUMMARY_ROLLUP_TABLES["day"], row)
     _refresh_day_quality_summary(db, local_day)
+    _clear_day_rollup_cursor(db, local_day)
+
+
+def invalidate_day_rollup_cursor(db, local_day):
+    """Invalidate the baseline, keeping unfinished work queued for maintenance."""
+    cursor = _day_rollup_cursor(db, local_day)
+    summary = db.fetchone(
+        "SELECT finalized FROM energy_summary_days WHERE local_day = ?", [local_day]
+    )
+    if summary is not None and summary["finalized"] and not (cursor or {}).get("dirty"):
+        # Explicit repricing/quality maintenance of a complete old day does not
+        # need to queue its detailed intervals for another expensive rebuild.
+        _clear_day_rollup_cursor(db, local_day)
+        return
+    _set_rollup_state(
+        db, INCREMENTAL_ROLLUP_STATE_PREFIX + local_day, _json({"dirty": True})
+    )
+
+
+def _clear_day_rollup_cursor(db, local_day):
+    db.execute(
+        "DELETE FROM summary_rollup_state WHERE key = ?",
+        [INCREMENTAL_ROLLUP_STATE_PREFIX + local_day],
+    )
+
+
+def _day_rollup_cursor(db, local_day):
+    row = db.fetchone(
+        "SELECT value FROM summary_rollup_state WHERE key = ?",
+        [INCREMENTAL_ROLLUP_STATE_PREFIX + local_day],
+    )
+    try:
+        value = json.loads(row["value"]) if row else None
+        return value if isinstance(value, dict) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _refresh_day_summary_incrementally(db, local_day, reference_time):
+    # Convert naive local midnights independently: a DST day can be 23/25 hours.
+    start_local = datetime.fromisoformat(local_day)
+    start_utc = start_local.astimezone(timezone.utc).isoformat()
+    end_utc = (start_local + timedelta(days=1)).astimezone(timezone.utc).isoformat()
+    with db.transaction():
+        cursor = _day_rollup_cursor(db, local_day) or {}
+        summary = db.fetchone("SELECT * FROM energy_summary_days WHERE local_day = ?", [local_day])
+        qualities = [dict(row) for row in db.execute(
+            "SELECT * FROM energy_quality_summary_days WHERE local_day = ?", [local_day]
+        )]
+        coherent = (
+            cursor.get("version") == 1 and not cursor.get("dirty") and summary is not None
+            and cursor.get("summary_updated_at") == summary["updated_at"]
+            and cursor.get("interval_count") == summary["interval_count"]
+            and isinstance(cursor.get("recorded_at"), str)
+            and start_utc <= cursor["recorded_at"] < end_utc
+            and sum(row["interval_count"] for row in qualities) == summary["interval_count"]
+            and all(row["updated_at"] == cursor.get("quality_updated_at") for row in qualities)
+        )
+        if not coherent:
+            is_past_day = _summary_is_finalized("day", local_day, reference_time)
+            if summary is not None and (summary["finalized"] or is_past_day):
+                detailed = db.fetchone(
+                    "SELECT COUNT(*) AS count FROM derived_energy_intervals WHERE local_day = ?",
+                    [local_day],
+                )
+                if detailed["count"] < summary["interval_count"]:
+                    # Old detailed intervals may already have been pruned. Their
+                    # durable energy/quality summaries remain authoritative.
+                    logging.warning("Preserving rollup %s: detailed intervals were pruned", local_day)
+                    if is_past_day:
+                        db.execute("UPDATE energy_summary_days SET finalized = 1 WHERE local_day = ?", [local_day])
+                    _clear_day_rollup_cursor(db, local_day)
+                    return
+            _refresh_day_summary(db, local_day, reference_time=reference_time)
+            summary = db.fetchone("SELECT * FROM energy_summary_days WHERE local_day = ?", [local_day])
+            qualities = [dict(row) for row in db.execute(
+                "SELECT * FROM energy_quality_summary_days WHERE local_day = ?", [local_day]
+            )]
+            last = db.fetchone(
+                """SELECT recorded_at FROM derived_energy_intervals
+                INDEXED BY idx_energy_recorded_quality
+                WHERE recorded_at >= ? AND recorded_at < ? AND local_day = ?
+                ORDER BY recorded_at DESC LIMIT 1""", [start_utc, end_utc, local_day]
+            )
+            watermark = last["recorded_at"] if last else None
+        else:
+            watermark = cursor.get("recorded_at")
+            # This existing timestamp index bounds the work to newly appended
+            # intervals, rather than revisiting the entire day via local_day.
+            extra_energy = [column for column in ALL_ENERGY_COLUMNS if column not in {
+                "pv_energy_kwh", "load_energy_kwh", "grid_export_energy_kwh",
+                "grid_to_load_energy_kwh", "grid_to_battery_energy_kwh",
+            }]
+            extra_select = ", ".join(f"SUM({column}) AS {column}" for column in extra_energy)
+            lower_comparison = ">" if watermark else ">="
+            deltas = [dict(row) for row in db.execute(
+                f"""SELECT {_reconciliation_quality_select()}, {extra_select},
+                    MAX(recorded_at) AS last_recorded_at,
+                    SUM(CASE WHEN contiguous = 0 AND previous_recorded_at IS NOT NULL THEN 1 ELSE 0 END) AS missing_intervals,
+                    SUM(grid_export_energy_kwh * feed_in_revenue_eur_per_kwh) AS earned_feed_in_eur,
+                    SUM((pv_to_load_energy_kwh + battery_to_load_energy_kwh) * grid_price_eur_per_kwh) AS earned_savings_eur
+                FROM derived_energy_intervals INDEXED BY idx_energy_recorded_quality
+                WHERE recorded_at {lower_comparison} ? AND recorded_at < ? AND local_day = ?
+                GROUP BY quality""", [watermark or start_utc, end_utc, local_day]
+            )]
+            summary = dict(summary)
+            by_quality = {row["quality"]: row for row in qualities}
+            for delta in deltas:
+                summary["interval_count"] += delta["interval_count"]
+                summary["covered_seconds"] += delta["integrated_seconds"]
+                summary["missing_intervals"] += delta["missing_intervals"]
+                for column in CUMULATIVE_TOTAL_COLUMNS:
+                    summary[column] += float(delta[column] or 0.0)
+                watermark = max(watermark or "", delta["last_recorded_at"])
+                previous = by_quality.get(delta["quality"], {})
+                merged = {"local_day": local_day, "quality": delta["quality"]}
+                for column in (
+                    "interval_count", "integrated_interval_count", "dropped_interval_count",
+                    "integrated_seconds", "dropped_seconds", "observed_interval_seconds",
+                    "positive_interval_count", "pv_energy_kwh", "load_energy_kwh",
+                    "grid_export_energy_kwh", "grid_import_energy_kwh",
+                    "grid_to_load_energy_kwh", "grid_to_battery_energy_kwh",
+                ):
+                    merged[column] = (previous.get(column) or 0) + (delta[column] or 0)
+                merged["max_interval_seconds"] = max(previous.get("max_interval_seconds") or 0, delta["max_interval_seconds"])
+                by_quality[delta["quality"]] = merged
+            summary.update(_history_sample_stats_for_day(db, local_day))
+            summary["finalized"] = _summary_is_finalized("day", local_day, reference_time)
+            summary["updated_at"] = datetime.now(timezone.utc).isoformat()
+            _write_summary_row(db, SUMMARY_ROLLUP_TABLES["day"], summary)
+            _write_day_quality_summary_rows(db, local_day, list(by_quality.values()))
+            qualities = [dict(row) for row in db.execute(
+                "SELECT * FROM energy_quality_summary_days WHERE local_day = ?", [local_day]
+            )]
+        if summary is not None:
+            _set_rollup_state(db, INCREMENTAL_ROLLUP_STATE_PREFIX + local_day, _json({
+                "version": 1, "recorded_at": watermark,
+                "interval_count": summary["interval_count"],
+                "summary_updated_at": summary["updated_at"],
+                "quality_updated_at": qualities[0]["updated_at"] if qualities else None,
+                "finalized": summary["finalized"],
+            }))
 
 
 def _refresh_month_summary(
@@ -698,6 +849,10 @@ def rebuild_energy_rollups(
     reference_time: Optional[datetime] = None,
 ):
     reference_time = reference_time or datetime.now(timezone.utc)
+    db.execute(
+        "DELETE FROM summary_rollup_state WHERE key >= ? AND key < ?",
+        [INCREMENTAL_ROLLUP_STATE_PREFIX, INCREMENTAL_ROLLUP_STATE_PREFIX + "\uffff"],
+    )
     for table in (
         QUALITY_SUMMARY_DAYS_TABLE,
         SUMMARY_ROLLUP_TABLES["year"],
@@ -1440,6 +1595,8 @@ def ensure_schema(db):
             ON samples(recorded_minute);
         CREATE INDEX IF NOT EXISTS idx_samples_local_day
             ON samples(local_day);
+        CREATE INDEX IF NOT EXISTS idx_samples_local_day_recorded_at
+            ON samples(local_day, recorded_at);
         CREATE INDEX IF NOT EXISTS idx_samples_local_month
             ON samples(local_month);
         CREATE INDEX IF NOT EXISTS idx_samples_local_year
@@ -1556,6 +1713,8 @@ def ensure_schema(db):
             ON compressed_samples_10m(recorded_at);
         CREATE INDEX IF NOT EXISTS idx_compressed_samples_local_day
             ON compressed_samples_10m(local_day);
+        CREATE INDEX IF NOT EXISTS idx_compressed_samples_day_recorded_at
+            ON compressed_samples_10m(local_day, recorded_at);
         CREATE INDEX IF NOT EXISTS idx_compressed_samples_local_month
             ON compressed_samples_10m(local_month);
         CREATE INDEX IF NOT EXISTS idx_compressed_samples_local_year
@@ -1961,6 +2120,20 @@ def compact_historical_samples(
     retention_hours: int = RAW_HISTORY_RETENTION_HOURS,
     bucket_minutes: int = ARCHIVED_SAMPLE_BUCKET_MINUTES,
 ):
+    # Archive and remove the raw points together. A full disk must not leave
+    # both representations visible in history while recording is paused.
+    with db.transaction():
+        return _compact_historical_samples(
+            db, reference_time, retention_hours, bucket_minutes
+        )
+
+
+def _compact_historical_samples(
+    db,
+    reference_time: Optional[datetime],
+    retention_hours: int,
+    bucket_minutes: int,
+):
     del bucket_minutes  # The SQL expressions are defined for the configured bucket size.
     current_time = reference_time or datetime.now(timezone.utc)
     max_bucket_local = _archived_bucket_start_local(
@@ -1968,6 +2141,20 @@ def compact_historical_samples(
         retention_hours=retention_hours,
     )
     current_local_day = current_time.astimezone().strftime("%Y-%m-%d")
+    # Most maintenance cycles have no completed bucket to archive. Probe each
+    # index separately: an OR over the wide samples table can trigger a full
+    # scan even when there are no eligible samples.
+    eligible = db.fetchone(
+        "SELECT 1 FROM samples WHERE archive_bucket_local <= ? LIMIT 1",
+        [max_bucket_local],
+    )
+    if eligible is None:
+        eligible = db.fetchone(
+            "SELECT 1 FROM samples WHERE local_day < ? LIMIT 1",
+            [current_local_day],
+        )
+    if eligible is None:
+        return
     rows = db.execute(
         f"""
         WITH eligible AS (
@@ -2506,6 +2693,12 @@ def calculate_energy_deltas(
 
 
 def insert_energy_delta(db, delta: dict[str, Any]):
+    cursor = _day_rollup_cursor(db, delta["local_day"])
+    if (cursor is None or cursor.get("dirty") or cursor.get("finalized")
+            or delta["recorded_at"] <= (cursor.get("recorded_at") or "")):
+        # Persist the dirty day before the upsert. A retry, clock rollback or
+        # late historical correction must never be added twice to a baseline.
+        _set_rollup_state(db, INCREMENTAL_ROLLUP_STATE_PREFIX + delta["local_day"], _json({"dirty": True}))
     db.execute(
         """
         INSERT OR REPLACE INTO derived_energy_intervals (
@@ -2944,11 +3137,37 @@ def refresh_current_summary_rollups(db, reference_time: Optional[datetime] = Non
     latest = get_latest_sample(db)
     if not latest:
         return
-    _refresh_summary_rollups_for_snapshot(
-        db,
-        latest,
-        reference_time=reference_time or _utc_from_iso(latest["recorded_at"]),
+    reference_time = reference_time or _utc_from_iso(latest["recorded_at"])
+    days = {latest["local_day"]}
+    previous = db.fetchone(
+        """SELECT local_day FROM energy_summary_days
+        WHERE local_day = (
+            SELECT MAX(local_day) FROM energy_summary_days WHERE local_day < ?
+        ) AND finalized = 0""", [latest["local_day"]]
     )
+    if previous:
+        # Upgrade/restart can precede the first persistent cursor. Recover the
+        # last operation day's tail without rebuilding unrelated old history.
+        days.add(previous["local_day"])
+    for row in db.execute(
+        "SELECT key, value FROM summary_rollup_state WHERE key >= ? AND key < ?",
+        [INCREMENTAL_ROLLUP_STATE_PREFIX, INCREMENTAL_ROLLUP_STATE_PREFIX + "\uffff"],
+    ):
+        local_day = row["key"][len(INCREMENTAL_ROLLUP_STATE_PREFIX):]
+        try:
+            cursor = json.loads(row["value"])
+        except (TypeError, ValueError):
+            cursor = {}
+        if not isinstance(cursor, dict) or cursor.get("dirty") or not cursor.get("finalized"):
+            days.add(local_day)
+    # Finish the previous day's tail before updating the new day/month/year.
+    with db.transaction():
+        for local_day in sorted(days):
+            _refresh_day_summary_incrementally(db, local_day, reference_time)
+        for local_month in sorted({day[:7] for day in days}):
+            _refresh_month_summary(db, local_month, reference_time=reference_time)
+        for local_year in sorted({day[:4] for day in days}):
+            _refresh_year_summary(db, local_year, reference_time=reference_time)
 
 
 def get_current_snapshot(

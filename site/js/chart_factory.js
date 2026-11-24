@@ -6,6 +6,32 @@ let gChartHistoryDetailsProduced = null
 let gChartHistoryDetailsConsumed = null
 let gChartHistoryHighRes = null
 
+function syncDonutLoadingGeometry(chart) {
+    if (chart.config.type !== "doughnut")
+        return;
+    const shell = chart.canvas?.parentElement;
+    const arc = chart.getDatasetMeta(0)?.data[0];
+    if (!shell?.classList.contains("chart-shell-donut") || !(arc?.outerRadius > 0))
+        return;
+
+    // Use the actual plot geometry, including the room taken by the legend.
+    shell.style.setProperty("--donut-loading-x", arc.x + "px");
+    shell.style.setProperty("--donut-loading-y", arc.y + "px");
+    shell.style.setProperty("--donut-loading-size", (arc.outerRadius * 2) + "px");
+    shell.style.setProperty("--donut-loading-thickness", (arc.outerRadius - arc.innerRadius) + "px");
+}
+
+function prepareHistoryDonutLoadingCharts() {
+    // Zero values only establish layout; the loading state hides the canvas.
+    if (gChartUsage == null)
+        createUsageChart("chart_usage", 0, 0, 0);
+    if (gChartConsumption == null)
+        createConsumptionChart("chart_consumption", 0, 0, 0);
+}
+
+if (typeof Chart !== "undefined")
+    Chart.register({ id: "donutLoadingGeometry", afterUpdate: syncDonutLoadingGeometry });
+
 function isChartInteractionActive(chart) {
     if (chart == null || chart.canvas == null)
         return false;

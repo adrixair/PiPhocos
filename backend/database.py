@@ -23,22 +23,31 @@ class Database:
         "DETACH",
     )
 
-    def __init__(self, file_name):
+    def __init__(self, file_name, *, read_only=False):
         self.cursor = None
         self.connection = None
         self.file_name = None
         self._transaction_depth = 0
-        self.open(file_name)
+        self.read_only = read_only
+        self.open(file_name, read_only=read_only)
 
     def __del__(self):
-        self.close()
+        self.close(optimize=False)
 
-    def open(self, file_name):
+    def open(self, file_name, *, read_only=False):
         """Opens the database connection."""
         self.file_name = str(file_name)
-        self.connection = sqlite3.connect(file_name)
+        self.read_only = read_only
+        if read_only:
+            uri = Path(file_name).resolve().as_uri() + "?mode=ro"
+            self.connection = sqlite3.connect(uri, uri=True)
+        else:
+            self.connection = sqlite3.connect(file_name)
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
+        if read_only:
+            self.cursor.execute("PRAGMA query_only=ON")
+            return
         self.cursor.execute("PRAGMA journal_mode=WAL")
         self.cursor.execute("PRAGMA synchronous=NORMAL")
         self.cursor.execute("PRAGMA foreign_keys=ON")
@@ -50,14 +59,20 @@ class Database:
         self.cursor.execute("PRAGMA journal_size_limit=67108864")
         self.optimize()
 
-    def close(self):
+    def close(self, *, optimize=True):
         """Closes the data base."""
         if self.connection is not None:
-            self.optimize()
-            self.connection.commit()
-            self.connection.close()
-            self.connection = None
-            self.cursor = None
+            try:
+                if not self.read_only and optimize:
+                    self.optimize()
+                    self.connection.commit()
+                elif not self.read_only:
+                    self.connection.rollback()
+            finally:
+                self.connection.close()
+                self.connection = None
+                self.cursor = None
+                self._transaction_depth = 0
 
     @classmethod
     def _should_commit(cls, query):
@@ -65,12 +80,14 @@ class Database:
         return statement.startswith(cls._MUTATING_PREFIXES)
 
     def _commit_if_needed(self, query):
-        if self._transaction_depth == 0 and self._should_commit(query):
+        if not self.read_only and self._transaction_depth == 0 and self._should_commit(query):
             self.connection.commit()
 
     @contextmanager
     def transaction(self):
         """Groups mutating statements into one SQLite transaction."""
+        if self.read_only:
+            raise sqlite3.OperationalError("read-only database cannot start a write transaction")
         outermost = self._transaction_depth == 0
         if outermost:
             self.connection.execute("BEGIN")
@@ -102,6 +119,8 @@ class Database:
 
     def execute_script(self, script):
         """Executes a multi-statement SQL script."""
+        if self.read_only:
+            raise sqlite3.OperationalError("read-only database cannot run write scripts")
         self.cursor.executescript(script)
         self.connection.commit()
 
@@ -119,7 +138,7 @@ class Database:
 
     def optimize(self, *, force=False):
         """Lets SQLite refresh planner statistics when it is cheap to do so."""
-        if self.connection is not None:
+        if self.connection is not None and not self.read_only:
             now = time.monotonic()
             if (
                 not force
@@ -140,5 +159,7 @@ class Database:
 
     def checkpoint_wal(self, *, truncate=False):
         """Runs a WAL checkpoint and optionally truncates the WAL file."""
+        if self.read_only:
+            raise sqlite3.OperationalError("read-only database cannot checkpoint WAL")
         mode = "TRUNCATE" if truncate else "PASSIVE"
         return self.execute(f"PRAGMA wal_checkpoint({mode})")

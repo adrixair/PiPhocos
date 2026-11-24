@@ -15,12 +15,75 @@ from phocos_store import (
     record_snapshot,
 )
 from tempo_edf import TempoApiClient, build_pricing_context
+from storage_guard import (
+    StoragePressure,
+    configured_min_free_bytes,
+    get_storage_pressure,
+    is_sqlite_full,
+)
 import version
 
 
 config = None
 tempo_client = None
 run = True
+
+
+def _storage_pressure():
+    return get_storage_pressure(
+        DATA_DIR,
+        min_free_bytes=configured_min_free_bytes(config.config_data if config else None),
+    )
+
+
+def _require_storage_write():
+    pressure = _storage_pressure()
+    if not pressure["write_allowed"]:
+        raise StoragePressure(pressure)
+
+
+def _open_recording_database():
+    _require_storage_write()
+    os.makedirs(DATA_DIR, exist_ok=True)
+    db = Database(str(DB_PATH))
+    try:
+        _require_storage_write()
+        ensure_schema(db)
+    except Exception:
+        db.close(optimize=False)
+        raise
+    return db
+
+
+def _set_file_logging(enabled):
+    root = logging.getLogger()
+    handlers = [h for h in root.handlers if getattr(h, "_piphocos_grabber", False)]
+    if not enabled:
+        for handler in handlers:
+            root.removeHandler(handler)
+            handler.close()
+    elif not handlers:
+        try:
+            handler = logging.FileHandler(str(GRABBER_LOG_PATH), mode="a")
+            handler._piphocos_grabber = True
+            handler.setFormatter(logging.Formatter(
+                "%(asctime)s %(levelname)-8s %(message)s", "%Y-%m-%d %H:%M:%S"
+            ))
+            root.addHandler(handler)
+        except OSError:
+            logging.warning("Grabber: file logging unavailable; using standard error")
+
+
+def _pause_recording(db, pressure, already_paused):
+    _set_file_logging(False)
+    if db is not None:
+        try:
+            db.close(optimize=False)
+        except Exception:
+            logging.exception("Grabber: closing paused recording database failed")
+    if not already_paused:
+        logging.warning("Grabber: recording paused reason=%s free_bytes=%s; history preserved",
+                        pressure["reason"], pressure.get("free_bytes"))
 
 
 def set_time_zone(tz):
@@ -58,6 +121,7 @@ def _max_integrated_gap_seconds(interval_s):
 
 def update_data(device, db, interval_s):
     """Polls the device and persists the result."""
+    _require_storage_write()
     started = time.monotonic()
 
     poll_started = time.monotonic()
@@ -68,6 +132,7 @@ def update_data(device, db, interval_s):
     )
 
     persist_started = time.monotonic()
+    _require_storage_write()
     record_snapshot(
         db=db,
         snapshot=poll_result["snapshot"],
@@ -112,28 +177,46 @@ def _database_int(name, default):
 
 
 def run_maintenance(db, *, prune_energy_intervals_due=False):
+    _require_storage_write()
     started = time.monotonic()
     raw_retention_hours = _database_int("raw_history_retention_hours", 24)
     compact_historical_samples(db, retention_hours=raw_retention_hours)
+    compacted_at = time.monotonic()
+    _require_storage_write()
     refresh_current_summary_rollups(db)
+    rolled_up_at = time.monotonic()
     prune_report = None
     if prune_energy_intervals_due:
+        _require_storage_write()
         prune_report = prune_detailed_energy_intervals(
             db,
             retention_days=_database_int("energy_interval_retention_days", 45),
             max_days=_database_int("energy_interval_prune_max_days", 14),
         )
-    db.optimize(force=True)
+    pruned_at = time.monotonic()
+    # Database.optimize already limits statistics work to once an hour. Forcing
+    # it at each maintenance cycle can stall the acquisition loop unnecessarily.
+    _require_storage_write()
+    db.optimize()
+    optimized_at = time.monotonic()
     database_config = config.config_data.get("database", {})
     threshold_mb = float(database_config.get("wal_truncate_threshold_mb") or 96.0)
     wal_size = db.wal_size_bytes()
+    _require_storage_write()
     checkpoint_rows = db.checkpoint_wal(
         truncate=wal_size > threshold_mb * 1024 * 1024,
     )
-    elapsed = time.monotonic() - started
+    completed_at = time.monotonic()
     logging.info(
-        "Grabber: maintenance completed in %.3fs wal_size=%s prune=%s checkpoint=%s",
-        elapsed,
+        "Grabber: maintenance completed in %.3fs "
+        "compaction=%.3fs rollups=%.3fs prune=%.3fs optimize=%.3fs checkpoint=%.3fs "
+        "wal_size=%s prune_report=%s checkpoint_result=%s",
+        completed_at - started,
+        compacted_at - started,
+        rolled_up_at - compacted_at,
+        pruned_at - rolled_up_at,
+        optimized_at - pruned_at,
+        completed_at - optimized_at,
         wal_size,
         prune_report,
         [dict(row) for row in checkpoint_rows] if checkpoint_rows else [],
@@ -153,10 +236,7 @@ def main():
     signal.signal(signal.SIGINT, handler_stop_signals)
     signal.signal(signal.SIGTERM, handler_stop_signals)
 
-    os.makedirs(DATA_DIR, exist_ok=True)
     logging.basicConfig(
-        filename=str(GRABBER_LOG_PATH),
-        filemode="w",
         format="%(asctime)s %(levelname)-8s %(message)s",
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -175,8 +255,9 @@ def main():
     tempo_client = TempoApiClient(config)
     tempo_client.refresh_if_due_background(force=True)
 
-    db = Database(str(DB_PATH))
-    ensure_schema(db)
+    db = None
+    storage_paused = False
+    retry_after = 0.0
 
     interval_s = float(config.config_data["grabber"]["interval_s"])
     maintenance_interval_s = max(
@@ -192,19 +273,54 @@ def main():
     next_energy_prune_monotonic = next_maintenance_monotonic
     logging.info("Grabber: entering main loop with %ss target interval", interval_s)
     while run:
+        pressure = _storage_pressure()
+        if time.monotonic() < retry_after:
+            pressure = {**pressure, "write_allowed": False, "reason": "sqlite_full"}
+        if not pressure["write_allowed"]:
+            _pause_recording(db, pressure, storage_paused)
+            db, storage_paused = None, True
+            time.sleep(min(max(interval_s, 0.1), 1.0))
+            next_run_monotonic = time.monotonic()
+            continue
         try:
+            if db is None:
+                db = _open_recording_database()
+                _set_file_logging(True)
+                if storage_paused:
+                    logging.info("Grabber: recording resumed free_bytes=%s", pressure["free_bytes"])
+                storage_paused = False
+                next_maintenance_monotonic = time.monotonic() + maintenance_interval_s
+                next_energy_prune_monotonic = max(next_energy_prune_monotonic, next_maintenance_monotonic)
             update_data(device, db, interval_s)
-        except Exception:
+        except StoragePressure as exc:
+            _pause_recording(db, exc.status, storage_paused)
+            db, storage_paused = None, True
+            continue
+        except Exception as exc:
+            if is_sqlite_full(exc):
+                retry_after = time.monotonic() + 30.0
+                _pause_recording(db, {"reason": "sqlite_full"}, storage_paused)
+                db, storage_paused = None, True
+                continue
             logging.exception("Updating data from device failed")
         now_monotonic = time.monotonic()
-        if now_monotonic >= next_maintenance_monotonic:
+        if db is not None and now_monotonic >= next_maintenance_monotonic:
             prune_energy_intervals_due = now_monotonic >= next_energy_prune_monotonic
             try:
                 run_maintenance(
                     db,
                     prune_energy_intervals_due=prune_energy_intervals_due,
                 )
-            except Exception:
+            except StoragePressure as exc:
+                _pause_recording(db, exc.status, storage_paused)
+                db, storage_paused = None, True
+                continue
+            except Exception as exc:
+                if is_sqlite_full(exc):
+                    retry_after = time.monotonic() + 30.0
+                    _pause_recording(db, {"reason": "sqlite_full"}, storage_paused)
+                    db, storage_paused = None, True
+                    continue
                 logging.exception("Grabber maintenance failed")
             if prune_energy_intervals_due:
                 next_energy_prune_monotonic = (
@@ -236,7 +352,9 @@ def main():
             time.sleep(min(remaining, 0.5))
 
     device.close()
-    db.close()
+    if db is not None:
+        db.close(optimize=False)
+    _set_file_logging(False)
     logging.info("Grabber: exiting main loop")
 
 

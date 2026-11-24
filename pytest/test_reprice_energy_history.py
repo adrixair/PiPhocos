@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
 from database import Database
-from phocos_store import ensure_schema, record_snapshot
-from scripts.reprice_energy_history import reprice
+from phocos_store import ensure_schema, record_snapshot, refresh_current_summary_rollups
+from scripts.reprice_energy_history import _update_detailed_intervals, reprice
 
 
 def _sample(recorded_at):
@@ -95,3 +95,37 @@ prices:
         - after["pv_to_load_energy_kwh"] * 0.1927
     ) < 1e-9
     assert interval["grid_price_eur_per_kwh"] == 0.1927
+
+
+def test_repricing_detailed_intervals_invalidates_incremental_totals(tmp_path):
+    db = Database(str(tmp_path / "reprice-incremental.sqlite"))
+    try:
+        ensure_schema(db)
+        start = datetime(2026, 4, 7, 10, 0, tzinfo=timezone.utc)
+        for offset in (0, 1):
+            recorded_at = start + timedelta(hours=offset)
+            record_snapshot(
+                db, _sample(recorded_at.isoformat()), {}, [],
+                max_gap_seconds=7200, persist_raw_frames=False,
+                pricing={"grid_price_eur_per_kwh": 0.3, "feed_in_revenue_eur_per_kwh": 0.1},
+                refresh_rollups=False, run_compaction=False,
+            )
+        refresh_current_summary_rollups(db, reference_time=start + timedelta(hours=1))
+        with db.transaction():
+            _update_detailed_intervals(db, "2026-04-07", 0.1927, 0.05)
+        record_snapshot(
+            db, _sample((start + timedelta(hours=2)).isoformat()), {}, [],
+            max_gap_seconds=7200, persist_raw_frames=False,
+            pricing={"grid_price_eur_per_kwh": 0.1927, "feed_in_revenue_eur_per_kwh": 0.05},
+            refresh_rollups=False, run_compaction=False,
+        )
+        refresh_current_summary_rollups(db, reference_time=start + timedelta(hours=2))
+        row = db.fetchone(
+            "SELECT earned_savings_eur, pv_to_load_energy_kwh, "
+            "battery_to_load_energy_kwh FROM energy_summary_days WHERE local_day = ?",
+            ["2026-04-07"],
+        )
+        expected = (row["pv_to_load_energy_kwh"] + row["battery_to_load_energy_kwh"]) * 0.1927
+        assert abs(row["earned_savings_eur"] - expected) < 1e-9
+    finally:
+        db.close()

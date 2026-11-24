@@ -47,7 +47,7 @@ d'abord le recalcul :
 python3 scripts/reprice_energy_history.py --db data/db.sqlite --config data/config.yml
 ```
 
-Après vérification et sauvegarde, appliquer les nouveaux montants :
+Après vérification du rapport, appliquer les nouveaux montants :
 
 ```bash
 python3 scripts/reprice_energy_history.py --db data/db.sqlite --config data/config.yml --apply

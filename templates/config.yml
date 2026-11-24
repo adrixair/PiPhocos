@@ -77,6 +77,8 @@ privacy:
 # Reglages SQLite. Le checkpoint passif est fait en maintenance; TRUNCATE est
 # reserve aux WAL trop gros pour eviter une degradation des lectures.
 database:
+  # Sous cette reserve (Mio), pause des nouvelles mesures, sans purge d'urgence.
+  min_free_space_mb: 512
   wal_truncate_threshold_mb: 96
   # False evite de dupliquer tout le JSON brut dans chaque sample a 1 s/0,5 s.
   # Mettre true seulement pour un diagnostic local ponctuel.

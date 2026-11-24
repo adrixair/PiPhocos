@@ -18,7 +18,7 @@ if str(BACKEND) not in sys.path:
 
 from config import Config  # noqa: E402
 from database import Database  # noqa: E402
-from phocos_store import ensure_schema  # noqa: E402
+from phocos_store import ensure_schema, invalidate_day_rollup_cursor  # noqa: E402
 from tempo_edf import build_pricing_context  # noqa: E402
 
 
@@ -107,6 +107,7 @@ def _update_detailed_intervals(
     count = int(rows[0]["count"] if rows else 0)
     if count <= 0:
         return 0
+    invalidate_day_rollup_cursor(db, local_day)
     db.execute(
         """
         UPDATE derived_energy_intervals

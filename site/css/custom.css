@@ -557,17 +557,6 @@ a {
   width: 100%;
 }
 
-.app-view-status[data-state="loading"]::before {
-  animation: app-view-status-spin 0.8s linear infinite;
-  border: 2px solid rgba(31, 24, 19, 0.14);
-  border-radius: 999px;
-  border-top-color: var(--app-accent-strong);
-  content: "";
-  flex: 0 0 auto;
-  height: 1.35rem;
-  width: 1.35rem;
-}
-
 .app-view-status[data-state="info"]::before,
 .app-view-status[data-state="error"]::before {
   align-items: center;
@@ -1104,16 +1093,6 @@ a {
 
   to {
     stroke-dashoffset: -64;
-  }
-}
-
-@keyframes app-view-status-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
   }
 }
 
