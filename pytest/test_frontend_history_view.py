@@ -101,7 +101,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
         encoding="utf-8"
     )
 
-    assert 'href="css/newdesign.css?build=20260816b"' in html
+    assert re.search(r'href="css/newdesign\.css\?build=[^"&]+"', html)
     assert '<div class="app-header-status" aria-live="polite">' in html
     assert "app-sidebar-footer" not in html
     assert "fa-user" not in html
@@ -129,7 +129,7 @@ def test_new_design_keeps_header_semantic_and_flow_controls_honest():
     assert ".power-flow-arrow:nth-child(even)" in design
     assert ".power-flow-arrow:nth-child(4n + 1)" in design
     assert "transform: scale(0.8)" not in design
-    assert 'src="js/info_graphic.js?build=20260816c"' in html
+    assert re.search(r'src="js/info_graphic\.js\?build=[^"&]+"', html)
     assert 'id="flow_track_solar_hub"' in html
     assert 'viewBox="0 0 860 360"' not in html
     assert "function layoutInfoGraphicPaths" in flow_script
@@ -152,9 +152,9 @@ def test_dashboard_mobile_values_stay_on_one_line_and_truncate_cleanly():
         encoding="utf-8"
     )
 
-    assert 'src="js/main.js?build=20260815p"' in html
-    assert 'src="js/localization.js?build=20260815n"' in html
-    assert 'href="css/custom.css?build=20260815d"' in html
+    assert re.search(r'src="js/main\.js\?build=[^"&]+"', html)
+    assert re.search(r'src="js/localization\.js\?build=[^"&]+"', html)
+    assert re.search(r'href="css/custom\.css\?build=[^"&]+"', html)
     assert 'class="dashboard-value-text"' in main_script
     assert ".dashboard-value-text" in custom
     assert "text-overflow: ellipsis;" in custom
@@ -265,7 +265,7 @@ def test_chart_loading_states_are_stable_and_energy_sources_stay_visible():
     assert "const shouldShowSkeleton = forceRefresh || !gDashboardGraphHasLoadedOnce;" in main_script
     assert "const shouldShowRefresh" not in main_script
     assert "hidden: true" not in chart_script
-    assert 'src="js/chart_factory.js?build=20260816c"' in html
+    assert re.search(r'src="js/chart_factory\.js\?build=[^"&]+"', html)
     assert "legendLabels.usePointStyle = true;" in chart_script
     assert html.count('data-dashboard-series=') == 4
     assert "function toggleDashboardChartSeries(datasetIndex)" in chart_script

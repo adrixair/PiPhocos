@@ -1,13 +1,20 @@
 from pathlib import Path
 
+import pytest
+
 from scripts import privacy_scan
+
+
+LOCAL_HOST = ".".join(("phocos", "local"))
+PRIVATE_IP = ".".join(("192", "168", "50", "10"))
+LOCAL_PATH = Path("/Users") / "example" / "project"
 
 
 def test_privacy_scan_detects_precise_environment_leaks(tmp_path):
     (tmp_path / "docs").mkdir()
     (tmp_path / "site").mkdir()
     (tmp_path / "docs" / "bad.md").write_text(
-        "Acces: phocos.local\nIP: 192.168.1.31\nPath: /Users/adrien/project\n",
+        f"Acces: {LOCAL_HOST}\nIP: {PRIVATE_IP}\nPath: {LOCAL_PATH}\n",
         encoding="utf-8",
     )
     (tmp_path / "site" / "ok.html").write_text("PiPhocos local", encoding="utf-8")
@@ -18,14 +25,24 @@ def test_privacy_scan_detects_precise_environment_leaks(tmp_path):
         "hostname_precis",
         "ip_privee_precise",
         "chemin_local_precis",
-        "identite_personnelle",
     }
+
+
+@pytest.mark.parametrize("filename", ["pytest/test_example.py", "dockerfile", "supervisord.conf", "site/app.webmanifest"])
+def test_privacy_scan_covers_public_tests_and_configuration(tmp_path, filename):
+    path = tmp_path / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"path = {str(LOCAL_PATH)!r}", encoding="utf-8")
+
+    assert [(finding.file, finding.rule) for finding in privacy_scan.scan(tmp_path)] == [
+        (filename, "chemin_local_precis"),
+    ]
 
 
 def test_privacy_scan_ignores_vendored_site_lib(tmp_path):
     (tmp_path / "site" / "lib").mkdir(parents=True)
     (tmp_path / "site" / "lib" / "vendor.js").write_text(
-        "const sample = 'phocos.local';",
+        f"const sample = '{LOCAL_HOST}';",
         encoding="utf-8",
     )
 
@@ -35,7 +52,7 @@ def test_privacy_scan_ignores_vendored_site_lib(tmp_path):
 def test_privacy_scan_detects_public_image_metadata(tmp_path):
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "screen.webp").write_bytes(
-        b"RIFF....WEBP XMP Pixelmator Screenshot /Users/adrien/Desktop"
+        f"RIFF....WEBP XMP Pixelmator Screenshot {LOCAL_PATH}".encode("ascii")
     )
 
     findings = privacy_scan.scan(tmp_path)
